@@ -86,16 +86,18 @@ struct GitClient {
     }
 
     private func cachedDiff() throws -> String {
-        try truncateDiff(run(["diff", "--cached", "--"]))
+        truncateDiff(try run(["diff", "--cached", "--"]))
     }
 
     private func trackedDiff() throws -> String {
         if hasHead() {
-            return try truncateDiff(run(["diff", "HEAD", "--"]))
+            return truncateDiff(try run(["diff", "HEAD", "--"]))
         }
+
         let cached = try run(["diff", "--cached", "--"])
         let unstaged = try run(["diff", "--"])
-        return try truncateDiff(cached + unstaged)
+
+        return truncateDiff(cached + unstaged)
     }
 
     private func untrackedPreview() throws -> String {
@@ -137,7 +139,7 @@ struct GitClient {
         return output
     }
 
-    private func truncateDiff(_ diff: String) throws -> String {
+    private func truncateDiff(_ diff: String) -> String {
         let data = Data(diff.utf8)
         if data.count <= Self.maxFileBytes * 4 {
             return diff
