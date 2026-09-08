@@ -5,8 +5,10 @@ import Foundation
 struct CommitFlow {
     let git: GitClient
     let ollama: OllamaClient
+    let stagingMode: StagingMode?
     let dryRun: Bool
-    let prompts = Prompts()
+
+    private let prompts = Prompts()
 
     func run() async throws {
         let status = try git.status()
@@ -20,7 +22,7 @@ struct CommitFlow {
             throw GithError.noChanges
         }
 
-        let mode = try prompts.askStagingMode()
+        let mode = try resolveStagingMode()
         try git.validateMode(mode, status: status)
 
         let diff = try git.previewDiff(mode: mode)
@@ -55,6 +57,14 @@ struct CommitFlow {
                 return
             }
         }
+    }
+
+    private func resolveStagingMode() throws -> StagingMode {
+        if let stagingMode {
+            return stagingMode
+        }
+
+        return try prompts.askStagingMode()
     }
 
     private func suggestMessage(diff: String) async throws -> String {
