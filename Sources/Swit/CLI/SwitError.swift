@@ -17,6 +17,7 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible, Equatable {
     case ollamaModelMissing(String)
     case ollamaFailed(String)
     case invalidConfiguration(String)
+    case noOllamaModels(String)
     case gitFailed(command: String, message: String)
 
     var description: String {
@@ -60,6 +61,12 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible, Equatable {
             return """
                 Invalid configuration file: \(path)
                 Check the JSON syntax or delete the file so that swit uses the default values.
+                """
+        case .noOllamaModels(let host):
+            return """
+                Keine lokalen Ollama-Modelle gefunden unter \(host).
+                Lade zuerst ein Modell, zum Beispiel mit:
+                ollama pull qwen2.5-coder:7b
                 """
         }
     }

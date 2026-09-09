@@ -9,7 +9,9 @@ struct OllamaClient {
 
     init(host: String, model: String) throws {
         let trimmed = host.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed), let scheme = url.scheme, scheme == "http" || scheme == "https" else {
+        guard let url = URL(string: trimmed), let scheme = url.scheme,
+            scheme == "http" || scheme == "https"
+        else {
             throw SwitError.invalidHost(host)
         }
         self.host = url
@@ -19,6 +21,41 @@ struct OllamaClient {
         config.timeoutIntervalForRequest = 120
         config.timeoutIntervalForResource = 180
         self.session = URLSession(configuration: config)
+    }
+
+    func listModels() async throws -> [OllamaModel] {
+        let endpoint = tagsURL()
+        let data: Data
+        let response: URLResponse
+
+        do {
+            (data, response) = try await session.data(from: endpoint)
+        } catch {
+            throw SwitError.ollamaUnreachable(host.absoluteString)
+        }
+
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            let body = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+            throw mapOllamaError(body)
+        }
+
+        let decoded: OllamaModelList
+
+        do {
+            decoded = try JSONDecoder().decode(OllamaModelList.self, from: data)
+        } catch {
+            throw SwitError.ollamaFailed("Could not read model list.")
+        }
+
+        let models = decoded.models.sorted {
+            $0.name.localizedStandardCompare($1.name) == .orderedAscending
+        }
+
+        guard !model.isEmpty else {
+            throw SwitError.noOllamaModels(host.absoluteString)
+        }
+
+        return models
     }
 
     func chat(system: String, user: String) async throws -> String {
@@ -47,7 +84,8 @@ struct OllamaClient {
         }
 
         if let errorPayload = try? JSONDecoder().decode(OllamaErrorPayload.self, from: data),
-           let message = errorPayload.error, !message.isEmpty {
+            let message = errorPayload.error, !message.isEmpty
+        {
             throw mapOllamaError(message)
         }
 
@@ -71,11 +109,21 @@ struct OllamaClient {
     }
 
     private func chatURL() -> URL {
+        endpointURL(path: "api/chat")
+    }
+
+    private func tagsURL() -> URL {
+        endpointURL(path: "api/tags")
+    }
+
+    private func endpointURL(path: String) -> URL {
         var base = host.absoluteString
+
         while base.hasSuffix("/") {
             base.removeLast()
         }
-        return URL(string: base + "/api/chat") ?? host.appendingPathComponent("api/chat")
+
+        return URL(string: "\(base)/\(path)") ?? host.appendingPathComponent(path)
     }
 
     private func mapOllamaError(_ message: String) -> SwitError {
@@ -86,7 +134,6 @@ struct OllamaClient {
         return .ollamaFailed(message)
     }
 }
-
 private struct ChatRequest: Encodable {
     let model: String
     let stream: Bool
@@ -97,16 +144,13 @@ private struct ChatRequest: Encodable {
         let temperature: Double
     }
 }
-
 private struct ChatMessage: Codable {
     let role: String
     let content: String
 }
-
 private struct ChatResponse: Decodable {
     let message: ChatMessage?
 }
-
 private struct OllamaErrorPayload: Decodable {
     let error: String?
 }
