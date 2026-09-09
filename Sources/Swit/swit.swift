@@ -9,6 +9,9 @@ struct Swit: AsyncParsableCommand {
         abstract: AppInfo.abstract,
         discussion: AppInfo.discussion,
         version: AppInfo.version,
-        subcommands: [CommitCommand.self]
+        subcommands: [
+            CommitCommand.self,
+            ConfigCommand.self,
+        ]
     )
 }

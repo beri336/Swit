@@ -74,9 +74,9 @@ struct Prompts {
         Stderr.write(prompt)
 
         guard let raw = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            else {
-                throw SwitError.aborted
-            }
+        else {
+            throw SwitError.aborted
+        }
         switch raw {
         case "y", "yes", "j", "":
             return .commit
@@ -89,6 +89,38 @@ struct Prompts {
 
             return try askReview()
         }
+    }
+
+    func askModel(from models: [OllamaModel]) throws -> OllamaModel {
+        try requireInteractive()
+
+        printLine("")
+        printLine("Available Ollama models:")
+
+        for (i, model) in models.enumerated() {
+            printLine("  [\(i + 1)] \(model.name)")
+        }
+
+        printLine("")
+        Stderr.write("Choose a model [1-\(models.count)] or [q] to cancel:\n> ")
+
+        while let raw = readLine() {
+            let input = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if input.lowercased() == "q" {
+                throw SwitError.aborted
+            }
+
+            if let num = Int(input),
+                models.indices.contains(num - 1)
+            {
+                return models[num - 1]
+            }
+
+            Stderr.write("Invalid selection. Please enter a number between 1 and \(models.count) or 'q'.\n> ")
+        }
+
+        throw SwitError.aborted
     }
 
     func editMessage(_ current: String) throws -> String {
