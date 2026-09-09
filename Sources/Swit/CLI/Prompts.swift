@@ -123,6 +123,27 @@ struct Prompts {
         throw SwitError.aborted
     }
 
+    func askHost(current: String) throws -> String {
+        try requireInteractive()
+
+        printLine("Current Ollama host:")
+        printLine("  \(current)")
+        printLine("")
+        Stderr.write("Enter the new Ollama host:\n> ")
+
+        guard let raw = readLine() else {
+            throw SwitError.aborted
+        }
+
+        let host = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !host.isEmpty else {
+            throw SwitError.aborted
+        }
+
+        return host
+    }
+
     func editMessage(_ current: String) throws -> String {
         try requireInteractive()
         Stderr.write(

@@ -6,6 +6,9 @@ struct SetCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "set",
         abstract: "Changes a configuration value.",
-        subcommands: [SetModelCommand.self]
+        subcommands: [
+            SetModelCommand.self,
+            SetHostCommand.self,
+        ]
     )
 }

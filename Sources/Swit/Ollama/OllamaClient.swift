@@ -9,11 +9,15 @@ struct OllamaClient {
 
     init(host: String, model: String) throws {
         let trimmed = host.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let url = URL(string: trimmed), let scheme = url.scheme,
-            scheme == "http" || scheme == "https"
+
+        guard let url = URL(string: trimmed),
+            let scheme = url.scheme?.lowercased(),
+            ["http", "https"].contains(scheme),
+            url.host != nil
         else {
             throw SwitError.invalidHost(host)
         }
+
         self.host = url
         self.model = model
 

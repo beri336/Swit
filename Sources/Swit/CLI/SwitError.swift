@@ -38,7 +38,7 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible, Equatable {
             let detail = message.isEmpty ? "Unknown error" : message
             return "git \(command) is failed: \(detail)"
         case .invalidHost(let host):
-            return "Invalid Ollama host: \(host). Beispiel: http://127.0.0.1:11434"
+            return "Invalid Ollama host: \(host). Example: http://127.0.0.1:11434"
         case .ollamaUnreachable(let host):
             return """
                 Ollama is not available at \(host)
@@ -64,8 +64,8 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible, Equatable {
                 """
         case .noOllamaModels(let host):
             return """
-                Keine lokalen Ollama-Modelle gefunden unter \(host).
-                Lade zuerst ein Modell, zum Beispiel mit:
+                No local Ollama models found at \(host).
+                First, load a model, for example with:
                 ollama pull qwen2.5-coder:7b
                 """
         }
