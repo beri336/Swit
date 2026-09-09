@@ -2,21 +2,22 @@
 
 import Foundation
 
-enum SwitError: Error, LocalizedError, CustomStringConvertible {
+enum SwitError: Error, LocalizedError, CustomStringConvertible, Equatable {
     case gitNotFound
-    case notAGitRepo(String)
     case noChanges
     case nothingStaged
     case noTrackedChanges
     case emptyDiff
-    case gitFailed(command: String, message: String)
+    case emptyMessage
+    case aborted
+    case notInteractive
+    case notAGitRepo(String)
     case invalidHost(String)
     case ollamaUnreachable(String)
     case ollamaModelMissing(String)
     case ollamaFailed(String)
-    case emptyMessage
-    case aborted
-    case notInteractive
+    case invalidConfiguration(String)
+    case gitFailed(command: String, message: String)
 
     var description: String {
         switch self {
@@ -39,14 +40,14 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible {
             return "Invalid Ollama host: \(host). Beispiel: http://127.0.0.1:11434"
         case .ollamaUnreachable(let host):
             return """
-            Ollama is not available at \(host)
-            Start the service with: ollama serve
-            """
+                Ollama is not available at \(host)
+                Start the service with: ollama serve
+                """
         case .ollamaModelMissing(let model):
             return """
-            Model ‘\(model)’ was not found.
-            Load it using: ollama pull \(model)
-            """
+                Model '\(model)' was not found.
+                Load it using: ollama pull \(model)
+                """
         case .ollamaFailed(let message):
             return "Ollama error: \(message)"
         case .emptyMessage:
@@ -55,6 +56,11 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible {
             return "Aborted."
         case .notInteractive:
             return "This command requires an interactive terminal (or use --dry-run)."
+        case .invalidConfiguration(let path):
+            return """
+                Invalid configuration file: \(path)
+                Check the JSON syntax or delete the file so that swit uses the default values.
+                """
         }
     }
 
