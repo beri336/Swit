@@ -96,6 +96,9 @@ swift test
 ```bash
 swift run swit --help
 swift run swit commit --help
+
+// check for current version
+swift run swit --version 
 ```
 
 ## Safety

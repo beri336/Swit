@@ -3,13 +3,13 @@
 import Foundation
 
 #if !os(Windows)
-#if canImport(Darwin)
-import Darwin
-#elseif canImport(Glibc)
-import Glibc
-#elseif canImport(Musl)
-import Musl
-#endif
+    #if canImport(Darwin)
+        import Darwin
+    #elseif canImport(Glibc)
+        import Glibc
+    #elseif canImport(Musl)
+        import Musl
+    #endif
 #endif
 
 struct Prompts {
@@ -21,24 +21,35 @@ struct Prompts {
 
     func requireInteractive() throws {
         guard isInteractive else {
-            throw GithError.notInteractive
+            throw SwitError.notInteractive
         }
     }
 
     var isInteractive: Bool {
         #if os(Windows)
-        return true
+            return true
         #else
-        return isatty(fileno(stdin)) != 0
+            return isatty(fileno(stdin)) != 0
         #endif
     }
 
     func askStagingMode() throws -> StagingMode {
         try requireInteractive()
-        Stderr.write("Staging? [1] only staged  [2] tracked  [3] all\n> ")
-        guard let raw = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
-            throw GithError.aborted
+
+        let prompt = [
+            TerminalStyle.bold("Staging mode"),
+            "[1] staged",
+            "[2] tracked",
+            "[3] all",
+        ].joined(separator: "  ")
+
+        Stderr.write(prompt + "\n> ")
+
+        guard let raw = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        else {
+            throw SwitError.aborted
         }
+
         switch raw {
         case "1", "s", "staged", "only staged":
             return .stagedOnly
@@ -47,17 +58,25 @@ struct Prompts {
         case "3", "a", "all":
             return .all
         default:
-            Stderr.write("Invalid selection. Please enter 1, 2, or 3.\n")
+            Stderr.write(TerminalStyle.yellow("Invalid selection. Enter 1, 2, or 3.") + "\n")
+
             return try askStagingMode()
         }
     }
 
     func askReview() throws -> ReviewChoice {
         try requireInteractive()
-        Stderr.write("[y] commit  [e] edit  [n] abort\n> ")
-        guard let raw = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() else {
-            throw GithError.aborted
-        }
+
+        let prompt =
+            "\(TerminalStyle.green("[y] Commit"))  " + "\(TerminalStyle.yellow("[e] Edit"))  "
+            + "\(TerminalStyle.red("[n] Abort"))\n> "
+
+        Stderr.write(prompt)
+
+        guard let raw = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            else {
+                throw SwitError.aborted
+            }
         switch raw {
         case "y", "yes", "j", "":
             return .commit
@@ -66,7 +85,8 @@ struct Prompts {
         case "n", "no", "q", "abort":
             return .abort
         default:
-            Stderr.write("Invalid selection. Please enter y, e, or n.\n")
+            Stderr.write(TerminalStyle.yellow("Invalid selection. Enter y, e, or n.") + "\n")
+
             return try askReview()
         }
     }
@@ -94,16 +114,28 @@ struct Prompts {
         }
         let edited = lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
         if edited.isEmpty {
-            throw GithError.emptyMessage
+            throw SwitError.emptyMessage
         }
         return edited
     }
 
-    func printLine(_ text: String) {
+    func printLine(_ text: String = "") {
         Stderr.write(text + "\n")
     }
-}
 
+    func printBanner() {
+        let title = TerminalStyle.bold(
+            TerminalStyle.cyan("SWIT · \(AppInfo.description)")
+        )
+        let version = TerminalStyle.dim("v\(AppInfo.version)")
+
+        printLine("┌──────────────────────────────────────┐")
+        printLine("│  \(title)")
+        printLine("│  \(version)")
+        printLine("└──────────────────────────────────────┘")
+        printLine()
+    }
+}
 enum Stderr {
     static func write(_ text: String) {
         try? FileHandle.standardError.write(contentsOf: Data(text.utf8))

@@ -35,7 +35,7 @@ struct CommitCommand: AsyncParsableCommand {
                 stagingMode: staging,
                 dryRun: dryRun)
             try await flow.run()
-        } catch let error as GithError {
+        } catch let error as SwitError {
             Stderr.write(error.description + "\n")
             throw ExitCode(error.exitCode)
         }

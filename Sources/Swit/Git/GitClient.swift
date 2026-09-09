@@ -10,7 +10,7 @@ struct GitClient {
 
     static func open(at path: String) throws -> GitClient {
         guard let git = ExecutableFinder.find("git") else {
-            throw GithError.gitNotFound
+            throw SwitError.gitNotFound
         }
 
         let standardized = Self.resolvePath(path)
@@ -20,10 +20,10 @@ struct GitClient {
         do {
             inside = try probe.run(["rev-parse", "--is-inside-work-tree"])
         } catch {
-            throw GithError.notAGitRepo(standardized)
+            throw SwitError.notAGitRepo(standardized)
         }
         guard inside.trimmingCharacters(in: .whitespacesAndNewlines) == "true" else {
-            throw GithError.notAGitRepo(standardized)
+            throw SwitError.notAGitRepo(standardized)
         }
 
         let toplevel = try probe.run(["rev-parse", "--show-toplevel"])
@@ -57,11 +57,11 @@ struct GitClient {
     func validateMode(_ mode: StagingMode, status: GitStatus) throws {
         switch mode {
         case .stagedOnly:
-            if status.staged.isEmpty { throw GithError.nothingStaged }
+            if status.staged.isEmpty { throw SwitError.nothingStaged }
         case .tracked:
-            if status.staged.isEmpty && status.unstaged.isEmpty { throw GithError.noTrackedChanges }
+            if status.staged.isEmpty && status.unstaged.isEmpty { throw SwitError.noTrackedChanges }
         case .all:
-            if status.isEmpty { throw GithError.noChanges }
+            if status.isEmpty { throw SwitError.noChanges }
         }
     }
 
@@ -172,7 +172,7 @@ struct GitClient {
             let stdout = try? FileHandle(forWritingTo: outURL),
             let stderr = try? FileHandle(forWritingTo: errURL)
         else {
-            throw GithError.gitFailed(command: arguments.joined(separator: " "), message: "temporäre Ausgabedateien konnten nicht geöffnet werden")
+            throw SwitError.gitFailed(command: arguments.joined(separator: " "), message: "temporäre Ausgabedateien konnten nicht geöffnet werden")
         }
         process.standardOutput = stdout
         process.standardError = stderr
@@ -183,7 +183,7 @@ struct GitClient {
         } catch {
             try? stdout.close()
             try? stderr.close()
-            throw GithError.gitFailed(command: arguments.joined(separator: " "), message: error.localizedDescription)
+            throw SwitError.gitFailed(command: arguments.joined(separator: " "), message: error.localizedDescription)
         }
         process.waitUntilExit()
         try? stdout.close()
@@ -194,7 +194,7 @@ struct GitClient {
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
         if process.terminationStatus != 0 {
-            throw GithError.gitFailed(command: arguments.joined(separator: " "), message: err)
+            throw SwitError.gitFailed(command: arguments.joined(separator: " "), message: err)
         }
         return out.replacingOccurrences(of: "\r\n", with: "\n").replacingOccurrences(of: "\r", with: "\n")
     }

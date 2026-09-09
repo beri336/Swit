@@ -10,7 +10,7 @@ struct OllamaClient {
     init(host: String, model: String) throws {
         let trimmed = host.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmed), let scheme = url.scheme, scheme == "http" || scheme == "https" else {
-            throw GithError.invalidHost(host)
+            throw SwitError.invalidHost(host)
         }
         self.host = url
         self.model = model
@@ -43,7 +43,7 @@ struct OllamaClient {
         do {
             (data, response) = try await session.data(for: request)
         } catch {
-            throw GithError.ollamaUnreachable(host.absoluteString)
+            throw SwitError.ollamaUnreachable(host.absoluteString)
         }
 
         if let errorPayload = try? JSONDecoder().decode(OllamaErrorPayload.self, from: data),
@@ -60,12 +60,12 @@ struct OllamaClient {
         do {
             decoded = try JSONDecoder().decode(ChatResponse.self, from: data)
         } catch {
-            throw GithError.ollamaFailed("Antwort konnte nicht gelesen werden.")
+            throw SwitError.ollamaFailed("Antwort konnte nicht gelesen werden.")
         }
 
         let content = decoded.message?.content.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if content.isEmpty {
-            throw GithError.ollamaFailed("Leere Antwort vom Modell '\(model)'.")
+            throw SwitError.ollamaFailed("Leere Antwort vom Modell '\(model)'.")
         }
         return content
     }
@@ -78,7 +78,7 @@ struct OllamaClient {
         return URL(string: base + "/api/chat") ?? host.appendingPathComponent("api/chat")
     }
 
-    private func mapOllamaError(_ message: String) -> GithError {
+    private func mapOllamaError(_ message: String) -> SwitError {
         let lower = message.lowercased()
         if lower.contains("not found") || lower.contains("model") && lower.contains("try pulling") {
             return .ollamaModelMissing(model)

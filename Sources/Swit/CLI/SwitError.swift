@@ -1,8 +1,8 @@
-// Sources/Gith/CLI/GithError.swift
+// Sources/Swit/CLI/SwitError.swift
 
 import Foundation
 
-enum GithError: Error, LocalizedError, CustomStringConvertible {
+enum SwitError: Error, LocalizedError, CustomStringConvertible {
     case gitNotFound
     case notAGitRepo(String)
     case noChanges
