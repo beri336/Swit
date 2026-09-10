@@ -1,6 +1,7 @@
 // Sources/Swit/Commands/Config/SetModelCommand.swift
 
 import ArgumentParser
+import Foundation
 
 struct SetModelCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -13,12 +14,17 @@ struct SetModelCommand: AsyncParsableCommand {
             let prompts = Prompts()
             try prompts.requireInteractive()
 
-            let store = ConfigurationStore()
+            let repositoryPath = FileManager.default.currentDirectoryPath
+            let git = try GitClient.open(at: repositoryPath)
+            let store = ConfigurationStore(repositoryPath: git.repoPath)
             var configuration = try store.load()
 
             let ollama = try OllamaClient(
                 host: configuration.host,
-                model: configuration.model
+                model: configuration.model,
+                temperature: configuration.temperature,
+                contextWindow: configuration.contextWindow,
+                keepAlive: configuration.keepAlive
             )
 
             prompts.printLine("Loading available Ollama models …")

@@ -36,7 +36,9 @@ final class ConfigurationStoreTests: XCTestCase {
         let configuration = AppConfiguration(
             model: "qwen2.5-coder:14b",
             host: "http://localhost:11434",
-            temperature: 0.4
+            temperature: 0.4,
+            contextWindow: 4096,
+            keepAlive: "30s"
         )
 
         try store.save(configuration)
@@ -49,7 +51,9 @@ final class ConfigurationStoreTests: XCTestCase {
         let expected = AppConfiguration(
             model: "llama3.2:3b",
             host: "http://localhost:11434",
-            temperature: 0.1
+            temperature: 0.1,
+            contextWindow: 4096,
+            keepAlive: "30s"
         )
 
         try store.save(expected)
@@ -73,6 +77,17 @@ final class ConfigurationStoreTests: XCTestCase {
                 .invalidConfiguration(store.fileURL.path)
             )
         }
+    }
+
+    func testRepositoryInitializerUsesGitMetadataDirectory() {
+        let store = ConfigurationStore(
+            repositoryPath: "/tmp/example-repository"
+        )
+
+        XCTAssertEqual(
+            store.fileURL.path,
+            "/tmp/example-repository/.git/swit/config.json"
+        )
     }
 
     private func makeStore() -> ConfigurationStore {

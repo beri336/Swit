@@ -9,6 +9,9 @@ struct SetCommand: ParsableCommand {
         subcommands: [
             SetModelCommand.self,
             SetHostCommand.self,
+            SetTemperatureCommand.self,
+            SetContextWindowCommand.self,
+            SetKeepAliveCommand.self,
         ]
     )
 }

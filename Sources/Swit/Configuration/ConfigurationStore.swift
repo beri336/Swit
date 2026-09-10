@@ -7,7 +7,19 @@ struct ConfigurationStore {
     private let fileManager: FileManager
 
     init(
-        fileURL: URL = ConfigurationStore.defaultFileURL(),
+        repositoryPath: String,
+        fileManager: FileManager = .default
+    ) {
+        self.fileURL = URL(fileURLWithPath: repositoryPath, isDirectory: true)
+            .appendingPathComponent(".git", isDirectory: true)
+            .appendingPathComponent(AppInfo.name, isDirectory: true)
+            .appendingPathComponent("config.json")
+
+        self.fileManager = fileManager
+    }
+
+    init(
+        fileURL: URL,
         fileManager: FileManager = .default
     ) {
         self.fileURL = fileURL
@@ -33,34 +45,17 @@ struct ConfigurationStore {
 
         try fileManager.createDirectory(
             at: directoryURL,
-            withIntermediateDirectories: true)
+            withIntermediateDirectories: true
+        )
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
 
         let data = try encoder.encode(configuration)
 
-        try data.write(to: fileURL, options: .atomic)
-    }
-
-    static func defaultFileURL() -> URL {
-        #if os(macOS)
-            let applicationSupportURL = FileManager.default.urls(
-                for: .applicationDirectory,
-                in: .userDomainMask)[0]
-
-            return
-                applicationSupportURL
-                .appendingPathComponent(AppInfo.name, isDirectory: true)
-                .appendingPathComponent("config.json")
-        #else
-            let homeDirectory = FileManager.default.homeDirectoryForCurrentUser
-
-            return
-                homeDirectory
-                .appendingPathComponent(".config", isDirectory: true)
-                .appendingPathComponent(AppInfo.name, isDirectory: true)
-                .appendingPathComponent("config.json")
-        #endif
+        try data.write(
+            to: fileURL,
+            options: Data.WritingOptions.atomic
+        )
     }
 }

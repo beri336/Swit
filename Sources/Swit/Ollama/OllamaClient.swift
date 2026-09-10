@@ -5,12 +5,22 @@ import Foundation
 struct OllamaClient {
     let host: URL
     let model: String
+    let temperature: Double
+    let contextWindow: Int
+    let keepAlive: String
+
     private let session: URLSession
 
-    init(host: String, model: String) throws {
-        let trimmed = host.trimmingCharacters(in: .whitespacesAndNewlines)
+    init(
+        host: String,
+        model: String,
+        temperature: Double = AppConfiguration.defaultTemperature,
+        contextWindow: Int = AppConfiguration.defaultContextWindow,
+        keepAlive: String = AppConfiguration.defaultKeepAlive
+    ) throws {
+        let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard let url = URL(string: trimmed),
+        guard let url = URL(string: trimmedHost),
             let scheme = url.scheme?.lowercased(),
             ["http", "https"].contains(scheme),
             url.host != nil
@@ -18,13 +28,28 @@ struct OllamaClient {
             throw SwitError.invalidHost(host)
         }
 
+        guard ConfigurationValidator.isValid(temperature: temperature) else {
+            throw SwitError.invalidTemperature(temperature)
+        }
+
+        guard ConfigurationValidator.isValid(contextWindow: contextWindow) else {
+            throw SwitError.invalidContextWindow(contextWindow)
+        }
+
+        guard ConfigurationValidator.isValid(keepAlive: keepAlive) else {
+            throw SwitError.invalidKeepAlive(keepAlive)
+        }
+
         self.host = url
         self.model = model
+        self.temperature = temperature
+        self.contextWindow = contextWindow
+        self.keepAlive = keepAlive
 
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 120
-        config.timeoutIntervalForResource = 180
-        self.session = URLSession(configuration: config)
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.timeoutIntervalForRequest = 120
+        configuration.timeoutIntervalForResource = 180
+        self.session = URLSession(configuration: configuration)
     }
 
     func listModels() async throws -> [OllamaModel] {
@@ -75,7 +100,11 @@ struct OllamaClient {
                     .init(role: "system", content: system),
                     .init(role: "user", content: user),
                 ],
-                options: .init(temperature: 0.2)
+                options: .init(
+                    temperature: temperature,
+                    numContext: contextWindow
+                ),
+                keepAlive: keepAlive
             )
         )
 
@@ -143,9 +172,24 @@ private struct ChatRequest: Encodable {
     let stream: Bool
     let messages: [ChatMessage]
     let options: Options
+    let keepAlive: String
+
+    enum CodingKeys: String, CodingKey {
+        case model
+        case stream
+        case messages
+        case options
+        case keepAlive = "keep_alive"
+    }
 
     struct Options: Encodable {
         let temperature: Double
+        let numContext: Int
+
+        enum CodingKeys: String, CodingKey {
+            case temperature
+            case numContext = "num_ctx"
+        }
     }
 }
 private struct ChatMessage: Codable {

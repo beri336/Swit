@@ -1,6 +1,7 @@
 // Sources/Swit/Commands/Config/SetHostCommand.swift
 
 import ArgumentParser
+import Foundation
 
 struct SetHostCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -13,7 +14,9 @@ struct SetHostCommand: ParsableCommand {
             let prompts = Prompts()
             try prompts.requireInteractive()
 
-            let store = ConfigurationStore()
+            let repositoryPath = FileManager.default.currentDirectoryPath
+            let git = try GitClient.open(at: repositoryPath)
+            let store = ConfigurationStore(repositoryPath: git.repoPath)
             var configuration = try store.load()
 
             let host = try prompts.askHost(current: configuration.host)

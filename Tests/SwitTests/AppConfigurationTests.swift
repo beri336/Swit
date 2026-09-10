@@ -5,22 +5,23 @@ import XCTest
 @testable import Swit
 
 final class AppConfigurationTests: XCTestCase {
-    func testDefaultUsesExpectedValues() {
-        XCTAssertEqual(AppConfiguration.default.model, "qwen2.5-coder:7b")
-        XCTAssertEqual(AppConfiguration.default.host, "http://127.0.0.1:11434")
-        XCTAssertEqual(AppConfiguration.default.temperature, 0.2)
-    }
-
-    func testConfigurationRoundTripsThroughJSON() throws {
-        let configuration = AppConfiguration(
-            model: "qwen2.5-coder:14b",
-            host: "http://localhost:11434",
-            temperature: 0.4
+    func testDecodesOlderConfigurationUsingNewDefaults() throws {
+        let data = Data(
+            """
+            {
+              "model": "qwen2.5-coder:14b",
+              "host": "http://localhost:11434",
+              "temperature": 0.4
+            }
+            """.utf8
         )
 
-        let data = try JSONEncoder().encode(configuration)
-        let decoded = try JSONDecoder().decode(AppConfiguration.self, from: data)
+        let configuration = try JSONDecoder().decode(AppConfiguration.self, from: data)
 
-        XCTAssertEqual(decoded, configuration)
+        XCTAssertEqual(configuration.model, "qwen2.5-coder:14b")
+        XCTAssertEqual(configuration.host, "http://localhost:11434")
+        XCTAssertEqual(configuration.temperature, 0.4)
+        XCTAssertEqual(configuration.contextWindow, AppConfiguration.defaultContextWindow)
+        XCTAssertEqual(configuration.keepAlive, AppConfiguration.defaultKeepAlive)
     }
 }

@@ -144,6 +144,73 @@ struct Prompts {
         return host
     }
 
+    func askTemperature(current: Double) throws -> Double {
+        try requireInteractive()
+
+        printLine("Current temperature: \(current)")
+        Stderr.write("New temperature (0.0 - 2.0):\n> ")
+
+        guard let raw = readLine() else {
+            throw SwitError.aborted
+        }
+
+        let input = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let temerature = Double(input) else {
+            throw SwitError.invalidTemperature(.nan)
+        }
+
+        guard ConfigurationValidator.isValid(temperature: temerature) else {
+            throw SwitError.invalidTemperature(temerature)
+        }
+
+        return temerature
+    }
+
+    func askContextWindow(current: Int) throws -> Int {
+        try requireInteractive()
+
+        printLine("Current context window: \(current)")
+        Stderr.write("New context window:\n> ")
+
+        guard let raw = readLine() else {
+            throw SwitError.aborted
+        }
+
+        let input = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let contextWindow = Int(input) else {
+            throw SwitError.invalidContextWindow(0)
+        }
+
+        guard ConfigurationValidator.isValid(contextWindow: contextWindow) else {
+            throw SwitError.invalidContextWindow(contextWindow)
+        }
+
+        return contextWindow
+    }
+
+    func askKeepAlive(current: String) throws -> String {
+        try requireInteractive()
+
+        printLine("Current keep alive: \(current)")
+        Stderr.write(
+            "New keep alive (for example 30s, 5m, 2h, 1d; 0 = unload, -1 = keep alive):\n> "
+        )
+
+        guard let raw = readLine() else {
+            throw SwitError.aborted
+        }
+
+        let keepAlive = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard ConfigurationValidator.isValid(keepAlive: keepAlive) else {
+            throw SwitError.invalidKeepAlive(keepAlive)
+        }
+
+        return keepAlive
+    }
+
     func editMessage(_ current: String) throws -> String {
         try requireInteractive()
         Stderr.write(
