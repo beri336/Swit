@@ -1,4 +1,4 @@
-// Sources/Gith/Git/GitStatus.swift
+// Sources/Swit/Git/GitStatus.swift
 
 import Foundation
 
@@ -38,6 +38,7 @@ struct GitStatus {
                 status.unstaged.append(path)
             }
         }
+
         return status
     }
 

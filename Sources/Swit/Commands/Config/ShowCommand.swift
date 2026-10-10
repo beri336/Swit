@@ -6,7 +6,7 @@ import ArgumentParser
 struct ShowCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "show",
-        abstract: "Zeigt die aktuelle Konfiguration."
+        abstract: "Shows the current configuration."
     )
 
     func run() throws {

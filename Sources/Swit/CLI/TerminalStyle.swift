@@ -48,6 +48,18 @@ enum TerminalStyle {
         apply(text, code: "31")
     }
 
+    static func blue(_ text: String) -> String {
+        apply(text, code: "34")
+    }
+
+    static func magenta(_ text: String) -> String {
+        apply(text, code: "35")
+    }
+
+    static func gray(_ text: String) -> String {
+        apply(text, code: "90")
+    }
+
     private static func apply(_ text: String, code: String) -> String {
         guard supportsColor else {
             return text

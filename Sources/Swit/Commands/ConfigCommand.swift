@@ -8,6 +8,7 @@ struct ConfigCommand: ParsableCommand {
         abstract: "Manages the swit configuration file.",
         subcommands: [
             ShowCommand.self,
+            ResetCommand.self,
             SetCommand.self,
         ]
     )

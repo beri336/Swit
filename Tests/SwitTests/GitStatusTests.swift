@@ -88,7 +88,7 @@ final class GitStatusTests: XCTestCase {
 
     func testParsePorcelainUsesNewPathForRename() {
         let status = GitStatus.parsePorcelain(
-            "R  Sources/Swit/Gith.swift -> Sources/Swit/Swit.swift\n"
+            "R  Sources/Swit/Swit.swift -> Sources/Swit/Swit.swift\n"
         )
 
         XCTAssertEqual(status.staged, ["Sources/Swit/Swit.swift"])

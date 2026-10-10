@@ -1,4 +1,4 @@
-// Sources/Gith/Commit/CommitPrompt.swift
+// Sources/Swit/Commit/CommitPrompt.swift
 
 enum CommitPrompt {
     static let system = """

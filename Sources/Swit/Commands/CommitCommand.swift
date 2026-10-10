@@ -7,8 +7,7 @@ import Foundation
 struct CommitCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "commit",
-        abstract:
-            "Proposal for a conventional commit message via Ollama; commit after confirmation."
+        abstract: "Proposal for a conventional commit message via Ollama; commit after confirmation."
     )
 
     @Argument(help: "Path to the Git repository. Default: current directory.")
@@ -29,15 +28,12 @@ struct CommitCommand: AsyncParsableCommand {
     @Option(name: .long, help: "How long Ollama keeps the model loaded, e.g., 5m.")
     var keepAlive: String?
 
-    @Option(
-        name: .long,
-        help: "Staging-Mode: staged-only, tracked, all. Standard: System will prompt interactively."
-    )
+    @Option(name: .long,
+            help: "Staging-Mode: staged-only, tracked, all. Standard: System will prompt interactively.")
     var staging: StagingMode?
 
-    @Flag(
-        name: .long,
-        help: "Just display the suggested message; do not run `git add` or `git commit`.")
+    @Flag(name: .long,
+          help: "Just display the suggested message; do not run `git add` or `git commit`.")
     var dryRun: Bool = false
 
     func run() async throws {

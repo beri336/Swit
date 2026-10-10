@@ -58,4 +58,8 @@ struct ConfigurationStore {
             options: Data.WritingOptions.atomic
         )
     }
+
+    func reset() throws {
+        try save(.default)
+    }
 }

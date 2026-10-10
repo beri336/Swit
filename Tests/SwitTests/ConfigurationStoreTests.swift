@@ -63,6 +63,22 @@ final class ConfigurationStoreTests: XCTestCase {
         XCTAssertEqual(actual, expected)
     }
 
+    func testResetRestoresDefaultConfiguration() throws {
+        let store = makeStore()
+        let custom = AppConfiguration(
+            model: "llama3.2:3b",
+            host: "http://localhost:11434",
+            temperature: 0.8,
+            contextWindow: 4096,
+            keepAlive: "30s"
+        )
+        try store.save(custom)
+
+        try store.reset()
+
+        XCTAssertEqual(try store.load(), .default)
+    }
+
     func testLoadThrowsForInvalidJSON() throws {
         let store = makeStore()
         try FileManager.default.createDirectory(

@@ -1,4 +1,4 @@
-// Sources/Gith/Ollama/OllamaClient.swift
+// Sources/Swit/Ollama/OllamaClient.swift
 
 import Foundation
 
@@ -52,6 +52,41 @@ struct OllamaClient {
         self.session = URLSession(configuration: configuration)
     }
 
+    func version() async throws -> String {
+        let endpoint = endpointURL(path: "api/version")
+        let data: Data
+        let response: URLResponse
+
+        do {
+            (data, response) = try await session.data(from: endpoint)
+        } catch {
+            throw SwitError.ollamaUnreachable(host.absoluteString)
+        }
+
+        if let http = response as? HTTPURLResponse,
+            !(200...299).contains(http.statusCode)
+        {
+            let body = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+            throw mapOllamaError(body)
+        }
+
+        let decoded: OllamaVersionResponse
+
+        do {
+            decoded = try JSONDecoder().decode(OllamaVersionResponse.self, from: data)
+        } catch {
+            throw SwitError.ollamaFailed("Could not read Ollama version.")
+        }
+
+        let version = decoded.version.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !version.isEmpty else {
+            throw SwitError.ollamaFailed("Ollama returned an empty version.")
+        }
+
+        return version
+    }
+
     func listModels() async throws -> [OllamaModel] {
         let endpoint = tagsURL()
         let data: Data
@@ -90,6 +125,7 @@ struct OllamaClient {
     func chat(system: String, user: String) async throws -> String {
         let endpoint = chatURL()
         var request = URLRequest(url: endpoint)
+
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(
@@ -131,13 +167,14 @@ struct OllamaClient {
         do {
             decoded = try JSONDecoder().decode(ChatResponse.self, from: data)
         } catch {
-            throw SwitError.ollamaFailed("Antwort konnte nicht gelesen werden.")
+            throw SwitError.ollamaFailed("Answer could not be read.")
         }
 
         let content = decoded.message?.content.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if content.isEmpty {
-            throw SwitError.ollamaFailed("Leere Antwort vom Modell '\(model)'.")
+            throw SwitError.ollamaFailed("Empty answer from model '\(model)'.")
         }
+
         return content
     }
 
@@ -201,4 +238,7 @@ private struct ChatResponse: Decodable {
 }
 private struct OllamaErrorPayload: Decodable {
     let error: String?
+}
+private struct OllamaVersionResponse: Decodable {
+    let version: String
 }

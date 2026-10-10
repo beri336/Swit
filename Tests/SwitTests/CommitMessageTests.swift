@@ -6,7 +6,7 @@ import XCTest
 
 /// Tests for CommitMessage
 final class CommitMessageTests: XCTestCase {
-    /// Removes leading/trailing whitespaces
+    /// removes leading/trailing whitespaces
     func testNormalizeTrimsWhitespace() {
         let raw = "  feat(cli): add dry run mode  \n"
         let msg = CommitMessage.normalize(raw)
@@ -14,7 +14,7 @@ final class CommitMessageTests: XCTestCase {
         XCTAssertEqual(msg, "feat(cli): add dry run mode")
     }
 
-    /// Removes markdown code fence
+    /// removes markdown code fence
     func testNormalizeRemovesMarkdownCodeFence() {
         let raw = """
             ```text
@@ -26,7 +26,7 @@ final class CommitMessageTests: XCTestCase {
         XCTAssertEqual(msg, "feat(commit): generate commit messages")
     }
 
-    /// Multiple lines are preserved
+    /// multiple lines are preserved
     func testNormalizeKeepsMultilineMessage() {
         let raw = """
             feat(commit): generate commit messages
@@ -46,7 +46,7 @@ final class CommitMessageTests: XCTestCase {
         )
     }
 
-    /// Validates commit message format
+    /// validates commit message format
     func testIsValidAcceptsTypeWithoutScope() {
         let message = "chore: initialize swit project"
 

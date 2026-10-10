@@ -1,4 +1,4 @@
-// Sources/Gith/CLI/Prompts.swift
+// Sources/Swit/CLI/Prompts.swift
 
 import Foundation
 
@@ -38,9 +38,10 @@ struct Prompts {
 
         let prompt = [
             TerminalStyle.bold("Staging mode"),
-            "[1] staged",
-            "[2] tracked",
-            "[3] all",
+            "\(TerminalStyle.magenta("[1] staged"))",
+            "\(TerminalStyle.yellow("[2] tracked"))",
+            "\(TerminalStyle.green("[3] all"))",
+            "\(TerminalStyle.gray("[q] quit"))",
         ].joined(separator: "  ")
 
         Stderr.write(prompt + "\n> ")
@@ -57,8 +58,12 @@ struct Prompts {
             return .tracked
         case "3", "a", "all":
             return .all
+        case "q", "quit":
+            throw SwitError.aborted
         default:
-            Stderr.write(TerminalStyle.yellow("Invalid selection. Enter 1, 2, or 3.") + "\n")
+            Stderr.write(TerminalStyle.red(
+                TerminalStyle.bold("Invalid selection. Enter 1, 2, or 3.")) + "\n"
+            )
 
             return try askStagingMode()
         }
@@ -82,10 +87,12 @@ struct Prompts {
             return .commit
         case "e", "edit":
             return .edit
-        case "n", "no", "q", "abort":
+        case "n", "no", "q", "abort", "quit":
             return .abort
         default:
-            Stderr.write(TerminalStyle.yellow("Invalid selection. Enter y, e, or n.") + "\n")
+            Stderr.write(
+                TerminalStyle.red(TerminalStyle.bold("Invalid selection. Enter y, e or n.")) + "\n"
+            )
 
             return try askReview()
         }
@@ -117,7 +124,9 @@ struct Prompts {
                 return models[num - 1]
             }
 
-            Stderr.write("Invalid selection. Please enter a number between 1 and \(models.count) or 'q'.\n> ")
+            Stderr.write(
+                "Invalid selection. Please enter a number between 1 and \(models.count) or 'q'.\n> "
+            )
         }
 
         throw SwitError.aborted
@@ -215,12 +224,12 @@ struct Prompts {
         try requireInteractive()
         Stderr.write(
             """
-            Edit the message. End with a line that contains only a period (.).
-            Current:
+            \(TerminalStyle.yellow(TerminalStyle.bold("Edit the message. End with a line that contains only a period (.).")))
+            \(TerminalStyle.magenta(TerminalStyle.bold("Current:")))
 
             \(current)
 
-            New message:
+            \(TerminalStyle.magenta(TerminalStyle.bold("New message:")))
 
             """
         )
@@ -243,15 +252,23 @@ struct Prompts {
         Stderr.write(text + "\n")
     }
 
-    func printBanner() {
+    func printBanner(ollamaVersion: String? = nil) {
         let title = TerminalStyle.bold(
             TerminalStyle.cyan("SWIT · \(AppInfo.description)")
         )
-        let version = TerminalStyle.dim("v\(AppInfo.version)")
+        let version = TerminalStyle.dim("Swit v\(AppInfo.version)")
+
+        let ollamaLabel: String
+        if let ollamaVersion {
+            ollamaLabel = TerminalStyle.dim("Ollama v\(ollamaVersion)")
+        } else {
+            ollamaLabel = TerminalStyle.dim("Ollama unavailable")
+        }
 
         printLine("┌──────────────────────────────────────┐")
         printLine("│  \(title)")
         printLine("│  \(version)")
+        printLine("│  \(ollamaLabel)")
         printLine("└──────────────────────────────────────┘")
         printLine()
     }

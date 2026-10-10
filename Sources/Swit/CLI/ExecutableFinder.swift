@@ -1,4 +1,4 @@
-// Sources/Gith/CLI/ExecutableFinder.swift
+// Sources/Swit/CLI/ExecutableFinder.swift
 
 import Foundation
 

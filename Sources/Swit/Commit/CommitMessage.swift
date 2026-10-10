@@ -1,4 +1,4 @@
-// Sources/Gith/Commit/CommitMessage.swift
+// Sources/Swit/Commit/CommitMessage.swift
 
 import Foundation
 

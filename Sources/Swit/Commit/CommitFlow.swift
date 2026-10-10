@@ -1,4 +1,4 @@
-// Sources/Gith/Commit/CommitFlow.swift
+// Sources/Swit/Commit/CommitFlow.swift
 
 import Foundation
 
@@ -11,7 +11,8 @@ struct CommitFlow {
     private let prompts = Prompts()
 
     func run() async throws {
-        prompts.printBanner()
+        let ollamaVersion = try await ollama.version()
+        prompts.printBanner(ollamaVersion: ollamaVersion)
 
         let status = try git.status()
 
@@ -45,13 +46,18 @@ struct CommitFlow {
                 + "\(TerminalStyle.dim("creates a suggestion for a conventional commit …"))"
         )
 
+        prompts.printLine(
+            "\(TerminalStyle.yellow(TerminalStyle.bold("Model ")))"
+                + "\(TerminalStyle.dim(ollama.model))"
+        )
+
         var message = try await suggestMessage(diff: diff)
 
         if dryRun {
             printSuggestion(message)
             prompts.printLine(
-                "\(TerminalStyle.yellow("Dry-run: "))"
-                    + "\(TerminalStyle.dim("no git add / git commit."))"
+                "\(TerminalStyle.yellow("Dry-run: "))" +
+                "\(TerminalStyle.dim("no git add / git commit."))"
             )
             return
         }
@@ -69,6 +75,7 @@ struct CommitFlow {
                 if final.isEmpty {
                     throw SwitError.emptyMessage
                 }
+
                 try git.stage(mode: mode)
                 let hash = try git.commit(message: final)
                 prompts.printLine("\(TerminalStyle.green("Commit \(hash) created."))")
@@ -86,18 +93,26 @@ struct CommitFlow {
     }
 
     private func suggestMessage(diff: String) async throws -> String {
-        let raw = try await ollama.chat(
-            system: CommitPrompt.system, user: CommitPrompt.user(diff: diff))
+        let raw = try await chatWithSpinner(
+            system: CommitPrompt.system,
+            user: CommitPrompt.user(diff: diff)
+        )
+
         var message = CommitMessage.normalize(raw)
+
         if CommitMessage.isValid(message) {
             return message
         }
 
         prompts.printLine(
-            "\(TerminalStyle.red("The suggestion doesn't fit the pattern; second attempt …"))"
+            TerminalStyle.red(
+                "The suggestion doesn't fit the pattern; second attempt …"
+            )
         )
-        let retryRaw = try await ollama.chat(
-            system: CommitPrompt.system, user: CommitPrompt.retry(previous: message)
+
+        let retryRaw = try await chatWithSpinner(
+            system: CommitPrompt.system,
+            user: CommitPrompt.retry(previous: message)
         )
 
         message = CommitMessage.normalize(retryRaw)
@@ -109,6 +124,7 @@ struct CommitFlow {
                 )
             )
         }
+
         return message
     }
 
@@ -139,5 +155,49 @@ struct CommitFlow {
         list(TerminalStyle.green("S"), status.staged)
         list(TerminalStyle.yellow("M"), status.unstaged)
         list(TerminalStyle.cyan("?"), status.untracked)
+    }
+
+    private func chatWithSpinner(system: String, user: String) async throws -> String {
+        // without interactive input, no animation
+        guard prompts.isInteractive else {
+            return try await ollama.chat(system: system, user: user)
+        }
+
+        let spinner = Task<Void, Never> {
+            let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+            var index = 0
+
+            while !Task.isCancelled {
+                let frame = TerminalStyle.cyan(frames[index])
+
+                Stderr.write(
+                    "\r\u{001B}[2K\(frame) Generating commit message …"
+                )
+
+                index = (index + 1) % frames.count
+
+                do {
+                    try await Task.sleep(for: .milliseconds(80))
+                } catch {
+                    break
+                }
+            }
+        }
+
+        do {
+            let response = try await ollama.chat(system: system, user: user)
+
+            spinner.cancel()
+            await spinner.value
+            Stderr.write("\r\u{001B}[2K")
+
+            return response
+        } catch {
+            spinner.cancel()
+            await spinner.value
+            Stderr.write("\r\u{001B}[2K")
+
+            throw error
+        }
     }
 }
