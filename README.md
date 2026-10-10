@@ -18,7 +18,7 @@
 
 ```bash
 cd /path/to/your/repo
-swit commit
+swift run swit commit
 ```
 
 1. Pick a staging mode
@@ -28,7 +28,7 @@ swit commit
 Preview only, with nothing staged or committed:
 
 ```bash
-swit commit . --dry-run
+swift run swit commit . --dry-run
 ```
 
 ## Features
@@ -65,6 +65,9 @@ Clone the repository and build it:
 git clone https://github.com/beri336/Swit
 cd swit
 swift build
+
+# after the first build, run without rebuilding:
+swift run --skip-build swit commit
 ```
 
 ### Release build and install to PATH (optional)
