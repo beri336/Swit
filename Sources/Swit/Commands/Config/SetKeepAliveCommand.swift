@@ -24,7 +24,11 @@ struct SetKeepAliveCommand: ParsableCommand {
             try store.save(configuration)
 
             prompts.printLine(
-                "Keep alive set: \(configuration.keepAlive)"
+                TerminalStyle.styled(
+                    "Keep alive set: ",
+                    foreground: .green,
+                    attributes: [.bold]
+                ) + TerminalStyle.gray("\(configuration.keepAlive)")
             )
         } catch let error as SwitError {
             Stderr.write(error.description + "\n")

@@ -8,7 +8,9 @@ struct GitStatus {
     var untracked: [String] = []
 
     var isEmpty: Bool {
-        staged.isEmpty && unstaged.isEmpty && untracked.isEmpty
+        staged.isEmpty &&
+        unstaged.isEmpty &&
+        untracked.isEmpty
     }
 
     static func parsePorcelain(_ output: String) -> GitStatus {
@@ -28,12 +30,15 @@ struct GitStatus {
                 status.untracked.append(path)
                 continue
             }
+
             if indexStatus == "!" {
                 continue
             }
+
             if indexStatus != " " {
                 status.staged.append(path)
             }
+
             if workTreeStatus != " " && workTreeStatus != "?" {
                 status.unstaged.append(path)
             }

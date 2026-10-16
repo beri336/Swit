@@ -1,7 +1,7 @@
 // Sources/Swit/Commands/Config/ShowCommand.swift
 
-import Foundation
 import ArgumentParser
+import Foundation
 
 struct ShowCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -16,14 +16,33 @@ struct ShowCommand: ParsableCommand {
             let store = ConfigurationStore(repositoryPath: git.repoPath)
             let configuration = try store.load()
 
-            print("swit configuration")
+            func printSetting(_ label: String, _ value: String) {
+                let title = TerminalStyle.styled(
+                    label.padding(toLength: 17, withPad: " ", startingAt: 0),
+                    foreground: .yellow,
+                    attributes: [.bold]
+                )
+
+                print("  \(title)\(value)")
+            }
+
+            print(
+                TerminalStyle.styled(
+                    "Swit configuration",
+                    foreground: .green,
+                    attributes: [.bold]
+                )
+            )
             print()
-            print("Model:           \(configuration.model)")
-            print("Host:            \(configuration.host)")
-            print("Temperature:     \(configuration.temperature)")
-            print("Context window:  \(configuration.contextWindow)")
-            print("Keep alive:      \(configuration.keepAlive)")
-            print("Path:            \(store.fileURL.path)")
+
+            printSetting("Model:", TerminalStyle.dim(configuration.model))
+            printSetting("Host:", TerminalStyle.dim(configuration.host))
+            printSetting("Temperature:", TerminalStyle.dim("\(configuration.temperature)"))
+            printSetting("Context window:", TerminalStyle.dim("\(configuration.contextWindow)"))
+            printSetting("Keep alive:", TerminalStyle.dim((configuration.keepAlive)))
+
+            print()
+            printSetting("Path:", TerminalStyle.dim(store.fileURL.path))
         } catch let error as SwitError {
             Stderr.write(error.description + "\n")
             throw ExitCode(error.exitCode)

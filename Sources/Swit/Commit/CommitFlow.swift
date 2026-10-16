@@ -17,14 +17,22 @@ struct CommitFlow {
         let status = try git.status()
 
         prompts.printLine(
-            "\(TerminalStyle.yellow(TerminalStyle.bold("Repository: ")))"
-                + "\(TerminalStyle.cyan(git.repoPath))"
+            TerminalStyle.styled(
+                "Repository: ",
+                foreground: .yellow,
+                attributes: [.bold]
+            ) + TerminalStyle.cyan(git.repoPath)
         )
+
         prompts.printLine(
-            "\(TerminalStyle.yellow(TerminalStyle.bold("Changes: ")))"
-                + "\(TerminalStyle.green("staged \(status.staged.count)"))  "
-                + "\(TerminalStyle.yellow("modified \(status.unstaged.count)"))  "
-                + "\(TerminalStyle.dim("untracked \(status.untracked.count)"))"
+            TerminalStyle.styled(
+                "Changes: ",
+                foreground: .yellow,
+                attributes: [.bold]
+            )
+                + TerminalStyle.green("staged \(status.staged.count)") + "  "
+                + TerminalStyle.yellow("modified \(status.unstaged.count)") + "  "
+                + TerminalStyle.dim("untracked \(status.untracked.count)")
         )
 
         printStatusFiles(status)
@@ -42,13 +50,21 @@ struct CommitFlow {
         }
 
         prompts.printLine(
-            "\(TerminalStyle.yellow(TerminalStyle.bold("Ollama ")))"
-                + "\(TerminalStyle.dim("creates a suggestion for a conventional commit …"))"
+            TerminalStyle.styled(
+                "Ollama ",
+                foreground: .yellow,
+                attributes: [.bold]
+            )
+                + TerminalStyle.dim("creates a suggestion for a conventional commit …")
         )
 
         prompts.printLine(
-            "\(TerminalStyle.yellow(TerminalStyle.bold("Model ")))"
-                + "\(TerminalStyle.dim(ollama.model))"
+            TerminalStyle.styled(
+                "Model ",
+                foreground: .yellow,
+                attributes: [.bold]
+            )
+                + TerminalStyle.dim(ollama.model)
         )
 
         var message = try await suggestMessage(diff: diff)
@@ -56,8 +72,12 @@ struct CommitFlow {
         if dryRun {
             printSuggestion(message)
             prompts.printLine(
-                "\(TerminalStyle.yellow("Dry-run: "))" +
-                "\(TerminalStyle.dim("no git add / git commit."))"
+                TerminalStyle.styled(
+                    "Dry-run: ",
+                    foreground: .yellow,
+                    attributes: [.bold]
+                )
+                    + TerminalStyle.dim("no git add / git commit.")
             )
             return
         }
@@ -78,7 +98,13 @@ struct CommitFlow {
 
                 try git.stage(mode: mode)
                 let hash = try git.commit(message: final)
-                prompts.printLine("\(TerminalStyle.green("Commit \(hash) created."))")
+                prompts.printLine(
+                    TerminalStyle.styled(
+                        "Commit \(hash) created.",
+                        foreground: .green,
+                        attributes: [.bold]
+                    )
+                )
                 return
             }
         }
@@ -105,8 +131,10 @@ struct CommitFlow {
         }
 
         prompts.printLine(
-            TerminalStyle.red(
-                "The suggestion doesn't fit the pattern; second attempt …"
+            TerminalStyle.styled(
+                "The suggestion doesn't fit the pattern, second attempt …",
+                foreground: .magenta,
+                attributes: [.bold]
             )
         )
 
@@ -119,8 +147,10 @@ struct CommitFlow {
 
         if !CommitMessage.isValid(message) {
             prompts.printLine(
-                TerminalStyle.yellow(
-                    "Warning: The message does not follow the conventions for commits. You can still edit it."
+                TerminalStyle.styled(
+                    "Warning: The message does not follow the conventions for commits. You can still edit it.",
+                    foreground: .yellow,
+                    attributes: [.bold]
                 )
             )
         }
@@ -130,10 +160,15 @@ struct CommitFlow {
 
     private func printSuggestion(_ message: String) {
         prompts.printLine(
-            TerminalStyle.bold(TerminalStyle.yellow(TerminalStyle.bold("Suggestion:"))))
+            TerminalStyle.styled(
+                "Suggestion:",
+                foreground: .yellow,
+                attributes: [.bold]
+            )
+        )
 
         for line in message.split(separator: "\n", omittingEmptySubsequences: false) {
-            prompts.printLine("  \(line)")
+            prompts.printLine("  \(TerminalStyle.blue(String(line)))")
         }
         prompts.printLine("")
     }
@@ -141,20 +176,33 @@ struct CommitFlow {
     private func printStatusFiles(_ status: GitStatus) {
         let limit = 12
 
-        func list(_ title: String, _ files: [String]) {
+        func list(_ files: [String],
+                  symbol: String,
+                  color: TerminalStyle.Color
+        ) {
             guard !files.isEmpty else { return }
-            let shown = files.prefix(limit)
-            for file in shown {
-                prompts.printLine("    \(title) \(file)")
+
+            let badge = TerminalStyle.styled(
+                symbol,
+                foreground: color,
+                attributes: [.bold]
+            )
+
+            for file in files.prefix(limit) {
+                prompts.printLine("    \(badge)  \(file)")
             }
-            if files.count > limit {
-                prompts.printLine("    \(title) … +\(files.count - limit) weitere")
+
+            let remaining = files.count - limit
+
+            if remaining > 0 {
+                let overflow = TerminalStyle.dim("… +\(remaining) weitere")
+                prompts.printLine("    \(badge)  \(overflow)")
             }
         }
 
-        list(TerminalStyle.green("S"), status.staged)
-        list(TerminalStyle.yellow("M"), status.unstaged)
-        list(TerminalStyle.cyan("?"), status.untracked)
+        list(status.staged, symbol: "S", color: .green)
+        list(status.unstaged, symbol: "M", color: .yellow)
+        list(status.untracked, symbol: "?", color: .gray)
     }
 
     private func chatWithSpinner(system: String, user: String) async throws -> String {
@@ -165,13 +213,18 @@ struct CommitFlow {
 
         let spinner = Task<Void, Never> {
             let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+            let message = TerminalStyle.brightGreen("Generating commit message …")
+            let clock = ContinuousClock()
+            let start = clock.now
             var index = 0
 
             while !Task.isCancelled {
-                let frame = TerminalStyle.cyan(frames[index])
+                let seconds = start.duration(to: clock.now).components.seconds
+                let frame = TerminalStyle.brightGreen(frames[index])
+                let timer = TerminalStyle.gray("(\(seconds) sec)")
 
                 Stderr.write(
-                    "\r\u{001B}[2K\(frame) Generating commit message …"
+                    "\r\u{001B}[2K\(frame) \(message) \(timer)"
                 )
 
                 index = (index + 1) % frames.count

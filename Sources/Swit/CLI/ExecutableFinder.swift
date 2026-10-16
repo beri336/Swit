@@ -7,11 +7,11 @@ enum ExecutableFinder {
         let environment = ProcessInfo.processInfo.environment
         let pathValue = environment["PATH"] ?? environment["Path"] ?? ""
         #if os(Windows)
-        let separator: Character = ";"
-        let names = name.lowercased().hasSuffix(".exe") ? [name] : [name, "\(name).exe"]
+            let separator: Character = ";"
+            let names = name.lowercased().hasSuffix(".exe") ? [name] : [name, "\(name).exe"]
         #else
-        let separator: Character = ":"
-        let names = [name]
+            let separator: Character = ":"
+            let names = [name]
         #endif
 
         let fileManager = FileManager.default

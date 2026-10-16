@@ -11,19 +11,18 @@ struct OllamaClient {
 
     private let session: URLSession
 
-    init(
-        host: String,
-        model: String,
-        temperature: Double = AppConfiguration.defaultTemperature,
-        contextWindow: Int = AppConfiguration.defaultContextWindow,
-        keepAlive: String = AppConfiguration.defaultKeepAlive
-    ) throws {
+    init(host: String,
+         model: String,
+         temperature: Double = AppConfiguration.defaultTemperature,
+         contextWindow: Int = AppConfiguration.defaultContextWindow,
+         keepAlive: String = AppConfiguration.defaultKeepAlive) throws
+    {
         let trimmedHost = host.trimmingCharacters(in: .whitespacesAndNewlines)
 
         guard let url = URL(string: trimmedHost),
-            let scheme = url.scheme?.lowercased(),
-            ["http", "https"].contains(scheme),
-            url.host != nil
+             let scheme = url.scheme?.lowercased(),
+             ["http", "https"].contains(scheme),
+             url.host != nil
         else {
             throw SwitError.invalidHost(host)
         }

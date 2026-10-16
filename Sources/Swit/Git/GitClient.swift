@@ -44,16 +44,16 @@ struct GitClient {
 
     func previewDiff(mode: StagingMode) throws -> String {
         switch mode {
-        case .stagedOnly:
-            return try cachedDiff()
-        case .tracked:
-            return try trackedDiff()
-        case .all:
-            let tracked = try trackedDiff()
-            let untracked = try untrackedPreview()
-            return [tracked, untracked].filter {
-                !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            }.joined(separator: "\n")
+            case .stagedOnly:
+                return try cachedDiff()
+            case .tracked:
+                return try trackedDiff()
+            case .all:
+                let tracked = try trackedDiff()
+                let untracked = try untrackedPreview()
+                return [tracked, untracked].filter {
+                    !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                }.joined(separator: "\n")
         }
     }
 
@@ -230,6 +230,7 @@ struct GitClient {
 
         if path.hasPrefix("~/") || path.hasPrefix("~\\") {
             let rest = String(path.dropFirst(2))
+
             return URL(fileURLWithPath: rest, relativeTo: FileManager.default.homeDirectoryForCurrentUser)
                 .standardizedFileURL.path
         }
@@ -243,6 +244,7 @@ struct GitClient {
 
     private func gitEnvironment() -> [String: String] {
         var env = ProcessInfo.processInfo.environment
+
         env["GIT_TERMINAL_PROMPT"] = "0"
         env["GIT_OPTIONAL_LOCKS"] = "0"
         env["GIT_PAGER"] = "cat"

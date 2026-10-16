@@ -15,8 +15,16 @@ struct ResetCommand: ParsableCommand {
 
             try store.reset()
 
-            print("Configurations were reset to the default values.")
-            print("File: \(store.fileURL.path)")
+            print(
+                TerminalStyle.styled(
+                    "Configurations were reset to the default values.",
+                    foreground: .yellow,
+                    attributes: [.bold])
+            )
+            print(
+                TerminalStyle.styled(
+                    "File: \(store.fileURL.path)",
+                    foreground: .brightGreen))
         } catch let error as SwitError {
             Stderr.write(error.description + "\n")
             throw ExitCode(error.exitCode)

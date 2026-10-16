@@ -31,13 +31,12 @@ struct AppConfiguration: Codable, Equatable {
         case keepAlive
     }
 
-    init(
-        model: String,
-        host: String,
-        temperature: Double,
-        contextWindow: Int,
-        keepAlive: String
-    ) {
+    init(model: String,
+         host: String,
+         temperature: Double,
+         contextWindow: Int,
+         keepAlive: String)
+    {
         self.model = model
         self.host = host
         self.temperature = temperature
@@ -48,15 +47,15 @@ struct AppConfiguration: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
-        model = try container.decodeIfPresent(String.self, forKey: .model) ?? Self.defaultModel
-        host = try container.decodeIfPresent(String.self, forKey: .host) ?? Self.defaultHost
-        temperature =
-            try container.decodeIfPresent(Double.self, forKey: .temperature)
-            ?? Self.defaultTemperature
-        contextWindow =
-            try container.decodeIfPresent(Int.self, forKey: .contextWindow)
-            ?? Self.defaultContextWindow
-        keepAlive =
-            try container.decodeIfPresent(String.self, forKey: .keepAlive) ?? Self.defaultKeepAlive
+        model = try container.decodeIfPresent(String.self, forKey: .model) ??
+            Self.defaultModel
+        host = try container.decodeIfPresent(String.self, forKey: .host) ??
+            Self.defaultHost
+        temperature = try container.decodeIfPresent(Double.self, forKey: .temperature) ??
+            Self.defaultTemperature
+        contextWindow = try container.decodeIfPresent(Int.self, forKey: .contextWindow) ??
+            Self.defaultContextWindow
+        keepAlive = try container.decodeIfPresent(String.self, forKey: .keepAlive) ??
+            Self.defaultKeepAlive
     }
 }

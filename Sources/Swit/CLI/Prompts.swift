@@ -101,15 +101,23 @@ struct Prompts {
     func askModel(from models: [OllamaModel]) throws -> OllamaModel {
         try requireInteractive()
 
-        printLine("")
-        printLine("Available Ollama models:")
+        printLine(
+            TerminalStyle.styled(
+                "\nAvailable Ollama models: ",
+                foreground: .green,
+                attributes: [.bold]
+            )
+        )
 
         for (i, model) in models.enumerated() {
-            printLine("  [\(i + 1)] \(model.name)")
+            printLine(TerminalStyle.gray("  [\(i + 1)] \(model.name)"))
         }
 
-        printLine("")
-        Stderr.write("Choose a model [1-\(models.count)] or [q] to cancel:\n> ")
+        Stderr.write(
+            TerminalStyle.green("\nChoose a model [1-\(models.count)] or [q] to cancel:")
+            + "\n"
+            + TerminalStyle.gray("> ")
+        )
 
         while let raw = readLine() {
             let input = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -125,7 +133,10 @@ struct Prompts {
             }
 
             Stderr.write(
-                "Invalid selection. Please enter a number between 1 and \(models.count) or 'q'.\n> "
+                TerminalStyle.red(
+                    TerminalStyle.bold("Invalid selection. Please enter a number between 1 and \(models.count) or 'q'.")) +
+                    "\n" + 
+                    TerminalStyle.gray("> ")
             )
         }
 
@@ -135,10 +146,19 @@ struct Prompts {
     func askHost(current: String) throws -> String {
         try requireInteractive()
 
-        printLine("Current Ollama host:")
-        printLine("  \(current)")
-        printLine("")
-        Stderr.write("Enter the new Ollama host:\n> ")
+        printLine(
+            TerminalStyle.styled(
+                "Current Ollama host: ",
+                foreground: .green,
+                attributes: [.bold]
+            ) + TerminalStyle.gray("\(current)")
+        )
+        
+        Stderr.write(
+            TerminalStyle.green("Enter the new Ollama host:")
+            + "\n"
+            + TerminalStyle.gray("> ")
+        )
 
         guard let raw = readLine() else {
             throw SwitError.aborted
@@ -156,8 +176,19 @@ struct Prompts {
     func askTemperature(current: Double) throws -> Double {
         try requireInteractive()
 
-        printLine("Current temperature: \(current)")
-        Stderr.write("New temperature (0.0 - 2.0):\n> ")
+        printLine(
+            TerminalStyle.styled(
+                "Current temperature: ",
+                foreground: .green,
+                attributes: [.bold]
+            ) + TerminalStyle.gray("\(current)")
+        )
+        
+        Stderr.write(
+            TerminalStyle.green("New temperature (0.0 - 2.0):")
+            + "\n"
+            + TerminalStyle.gray("> ")
+        )
 
         guard let raw = readLine() else {
             throw SwitError.aborted
@@ -179,8 +210,20 @@ struct Prompts {
     func askContextWindow(current: Int) throws -> Int {
         try requireInteractive()
 
-        printLine("Current context window: \(current)")
-        Stderr.write("New context window:\n> ")
+        printLine(
+            TerminalStyle.styled(
+                "Current context window: ",
+                foreground: .green,
+                attributes: [.bold]
+            )
+                + TerminalStyle.gray("\(current)")
+        )
+        
+        Stderr.write(
+            TerminalStyle.green("New context window:")
+            + "\n"
+            + TerminalStyle.gray("> ")
+        )
 
         guard let raw = readLine() else {
             throw SwitError.aborted
@@ -202,9 +245,19 @@ struct Prompts {
     func askKeepAlive(current: String) throws -> String {
         try requireInteractive()
 
-        printLine("Current keep alive: \(current)")
+        printLine(
+            TerminalStyle.styled(
+                "Current keep alive: ",
+                foreground: .green,
+                attributes: [.bold]
+            )
+                + TerminalStyle.gray("\(current)")
+        )
+        
         Stderr.write(
-            "New keep alive (for example 30s, 5m, 2h, 1d; 0 = unload, -1 = keep alive):\n> "
+            TerminalStyle.green("New keep alive (for example 30s, 5m, 2h, 1d; 0 = unload, -1 = keep alive):")
+            + "\n"
+            + TerminalStyle.gray("> ")
         )
 
         guard let raw = readLine() else {

@@ -24,7 +24,11 @@ struct SetContextWindowCommand: ParsableCommand {
             try store.save(configuration)
 
             prompts.printLine(
-                "Context window set to: \(configuration.contextWindow)"
+                TerminalStyle.styled(
+                    "Context window set to: ",
+                    foreground: .green,
+                    attributes: [.bold]
+                ) + TerminalStyle.gray("\(configuration.contextWindow)")
             )
         } catch let error as SwitError {
             Stderr.write(error.description + "\n")

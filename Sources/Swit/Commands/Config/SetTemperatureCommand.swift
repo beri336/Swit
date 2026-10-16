@@ -22,7 +22,13 @@ struct SetTemperatureCommand: ParsableCommand {
             )
             try store.save(configuration)
 
-            prompts.printLine("Ollama temperature set to \(configuration.temperature).")
+            prompts.printLine(
+                TerminalStyle.styled(
+                    "Ollama temperature set to: ",
+                    foreground: .green,
+                    attributes: [.bold]
+                ) + TerminalStyle.gray("\(configuration.temperature)")
+            )
         } catch let error as SwitError {
             Stderr.write(error.description + "\n")
             throw ExitCode(error.exitCode)

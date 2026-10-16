@@ -29,7 +29,13 @@ struct SetHostCommand: ParsableCommand {
             configuration.host = host
             try store.save(configuration)
 
-            prompts.printLine("Ollama host set to \(host).")
+            prompts.printLine(
+                TerminalStyle.styled(
+                    "Ollama host set to: ",
+                    foreground: .green,
+                    attributes: [.bold]
+                ) + TerminalStyle.gray("\(host)")
+            )
         } catch let error as SwitError {
             Stderr.write(error.description + "\n")
             throw ExitCode(error.exitCode)

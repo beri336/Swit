@@ -7,8 +7,9 @@ enum ConfigurationValidator {
     static let maximumTemperature = 2.0
 
     static func isValid(temperature: Double) -> Bool {
-        temperature.isFinite && temperature >= minimumTemperature
-            && temperature <= maximumTemperature
+        temperature.isFinite &&
+        temperature >= minimumTemperature &&
+        temperature <= maximumTemperature
     }
 
     static func isValid(contextWindow: Int) -> Bool {
@@ -26,7 +27,6 @@ enum ConfigurationValidator {
 
         return value.range(
             of: pattern,
-            options: .regularExpression
-        ) != nil
+            options: .regularExpression) != nil
     }
 }

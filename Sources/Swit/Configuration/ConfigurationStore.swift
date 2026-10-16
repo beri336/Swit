@@ -6,10 +6,9 @@ struct ConfigurationStore {
     let fileURL: URL
     private let fileManager: FileManager
 
-    init(
-        repositoryPath: String,
-        fileManager: FileManager = .default
-    ) {
+    init(repositoryPath: String,
+         fileManager: FileManager = .default)
+    {
         self.fileURL = URL(fileURLWithPath: repositoryPath, isDirectory: true)
             .appendingPathComponent(".git", isDirectory: true)
             .appendingPathComponent(AppInfo.name, isDirectory: true)
@@ -18,10 +17,9 @@ struct ConfigurationStore {
         self.fileManager = fileManager
     }
 
-    init(
-        fileURL: URL,
-        fileManager: FileManager = .default
-    ) {
+    init(fileURL: URL,
+         fileManager: FileManager = .default)
+    {
         self.fileURL = fileURL
         self.fileManager = fileManager
     }

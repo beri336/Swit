@@ -27,7 +27,7 @@ struct SetModelCommand: AsyncParsableCommand {
                 keepAlive: configuration.keepAlive
             )
 
-            prompts.printLine("Loading available Ollama models …")
+            prompts.printLine(TerminalStyle.gray("Loading available Ollama models …"))
 
             let models = try await ollama.listModels()
 
@@ -36,7 +36,13 @@ struct SetModelCommand: AsyncParsableCommand {
             configuration.model = selectedModel.name
             try store.save(configuration)
 
-            prompts.printLine("Set standard model: \(selectedModel.name)")
+            prompts.printLine(
+                TerminalStyle.styled(
+                    "Set standard model: ",
+                    foreground: .green,
+                    attributes: [.bold]
+                ) + TerminalStyle.gray("\(selectedModel.name)")
+            )
         } catch let error as SwitError {
             Stderr.write(error.description + "\n")
             throw ExitCode(error.exitCode)
