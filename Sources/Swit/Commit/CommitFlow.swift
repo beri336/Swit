@@ -11,8 +11,13 @@ struct CommitFlow {
     private let prompts = Prompts()
 
     func run() async throws {
+        async let updateVersion = UpdateChecker(manifestURL: AppInfo.updateManifestURL)
+            .availableVersion(current: AppInfo.version)
+
         let ollamaVersion = try await ollama.version()
-        prompts.printBanner(ollamaVersion: ollamaVersion)
+        let availableVersion = await updateVersion
+        prompts.printBanner(ollamaVersion: ollamaVersion,
+                            availableVersion: availableVersion)
 
         let status = try git.status()
 

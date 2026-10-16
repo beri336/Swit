@@ -61,8 +61,9 @@ struct Prompts {
         case "q", "quit":
             throw SwitError.aborted
         default:
-            Stderr.write(TerminalStyle.red(
-                TerminalStyle.bold("Invalid selection. Enter 1, 2, or 3.")) + "\n"
+            Stderr.write(
+                TerminalStyle.red(
+                    TerminalStyle.bold("Invalid selection. Enter 1, 2, or 3.")) + "\n"
             )
 
             return try askStagingMode()
@@ -115,8 +116,8 @@ struct Prompts {
 
         Stderr.write(
             TerminalStyle.green("\nChoose a model [1-\(models.count)] or [q] to cancel:")
-            + "\n"
-            + TerminalStyle.gray("> ")
+                + "\n"
+                + TerminalStyle.gray("> ")
         )
 
         while let raw = readLine() {
@@ -134,9 +135,9 @@ struct Prompts {
 
             Stderr.write(
                 TerminalStyle.red(
-                    TerminalStyle.bold("Invalid selection. Please enter a number between 1 and \(models.count) or 'q'.")) +
-                    "\n" + 
-                    TerminalStyle.gray("> ")
+                    TerminalStyle.bold(
+                        "Invalid selection. Please enter a number between 1 and \(models.count) or 'q'."
+                    )) + "\n" + TerminalStyle.gray("> ")
             )
         }
 
@@ -153,11 +154,11 @@ struct Prompts {
                 attributes: [.bold]
             ) + TerminalStyle.gray("\(current)")
         )
-        
+
         Stderr.write(
             TerminalStyle.green("Enter the new Ollama host:")
-            + "\n"
-            + TerminalStyle.gray("> ")
+                + "\n"
+                + TerminalStyle.gray("> ")
         )
 
         guard let raw = readLine() else {
@@ -183,11 +184,11 @@ struct Prompts {
                 attributes: [.bold]
             ) + TerminalStyle.gray("\(current)")
         )
-        
+
         Stderr.write(
             TerminalStyle.green("New temperature (0.0 - 2.0):")
-            + "\n"
-            + TerminalStyle.gray("> ")
+                + "\n"
+                + TerminalStyle.gray("> ")
         )
 
         guard let raw = readLine() else {
@@ -218,11 +219,11 @@ struct Prompts {
             )
                 + TerminalStyle.gray("\(current)")
         )
-        
+
         Stderr.write(
             TerminalStyle.green("New context window:")
-            + "\n"
-            + TerminalStyle.gray("> ")
+                + "\n"
+                + TerminalStyle.gray("> ")
         )
 
         guard let raw = readLine() else {
@@ -253,11 +254,12 @@ struct Prompts {
             )
                 + TerminalStyle.gray("\(current)")
         )
-        
+
         Stderr.write(
-            TerminalStyle.green("New keep alive (for example 30s, 5m, 2h, 1d; 0 = unload, -1 = keep alive):")
-            + "\n"
-            + TerminalStyle.gray("> ")
+            TerminalStyle.green(
+                "New keep alive (for example 30s, 5m, 2h, 1d; 0 = unload, -1 = keep alive):")
+                + "\n"
+                + TerminalStyle.gray("> ")
         )
 
         guard let raw = readLine() else {
@@ -305,11 +307,27 @@ struct Prompts {
         Stderr.write(text + "\n")
     }
 
-    func printBanner(ollamaVersion: String? = nil) {
+    func printBanner(
+        ollamaVersion: String? = nil,
+        availableVersion: String? = nil
+    ) {
         let title = TerminalStyle.bold(
-            TerminalStyle.cyan("SWIT · \(AppInfo.description)")
+            TerminalStyle.styled(
+                "SWIT · \(AppInfo.description)",
+                foreground: .cyan,
+                attributes: [.bold])
         )
-        let version = TerminalStyle.dim("Swit v\(AppInfo.version)")
+
+        var version = TerminalStyle.dim("Swit v\(AppInfo.version)")
+
+        if let availableVersion {
+            version +=
+                " " +
+                TerminalStyle.styled(
+                    "(update available: v\(availableVersion))",
+                    foreground: .yellow,
+                    attributes: [.bold])
+        }
 
         let ollamaLabel: String
         if let ollamaVersion {
