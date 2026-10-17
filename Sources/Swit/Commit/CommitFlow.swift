@@ -7,6 +7,7 @@ struct CommitFlow {
     let ollama: OllamaClient
     let stagingMode: StagingMode?
     let dryRun: Bool
+    var verbose: Bool = false
 
     private let prompts = Prompts()
 
@@ -49,7 +50,13 @@ struct CommitFlow {
         let mode = try resolveStagingMode()
         try git.validateMode(mode, status: status)
 
+        let snapshot = try git.repositorySnapshot(mode: mode)
         let diff = try git.previewDiff(mode: mode)
+
+        guard try git.repositorySnapshot(mode: mode) == snapshot else {
+            throw SwitError.repositoryChanged
+        }
+
         if diff.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             throw SwitError.emptyDiff
         }
@@ -91,26 +98,52 @@ struct CommitFlow {
             printSuggestion(message)
 
             switch try prompts.askReview() {
-            case .abort:
-                throw SwitError.aborted
-            case .edit:
-                message = try prompts.editMessage(message)
-            case .commit:
-                let final = message.trimmingCharacters(in: .whitespacesAndNewlines)
-                if final.isEmpty {
-                    throw SwitError.emptyMessage
-                }
+                case .abort:
+                    throw SwitError.aborted
 
-                try git.stage(mode: mode)
-                let hash = try git.commit(message: final)
-                prompts.printLine(
-                    TerminalStyle.styled(
-                        "Commit \(hash) created.",
-                        foreground: .green,
-                        attributes: [.bold]
+                case .edit:
+                    message = try prompts.editMessage(message)
+
+                case .regenerate:
+                    prompts.printLine(TerminalStyle.styled("Generating another suggestion …",
+                                                           foreground: .cyan,
+                                                           attributes: [.bold]))
+                    message = try await suggestMessage(diff: diff)
+
+                case .diff:
+                    printDiff(diff)
+
+                case .commit:
+                    let final = message.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                    if final.isEmpty {
+                        throw SwitError.emptyMessage
+                    }
+
+                    guard try git.repositorySnapshot(mode: mode) == snapshot else {
+                        throw SwitError.repositoryChanged
+                    }
+
+                    try git.stage(mode: mode)
+
+                    let stagedSnapshot = try git.repositorySnapshot(mode: .stagedOnly)
+
+                    guard stagedSnapshot.head == snapshot.head,
+                          stagedSnapshot.indexTree == snapshot.indexTree else {
+                        throw SwitError.repositoryChanged
+                    }
+
+                    let hash = try git.commit(message: final)
+
+                    prompts.printLine(
+                        TerminalStyle.styled(
+                            "Commit \(hash) created.",
+                            foreground: .green,
+                            attributes: [.bold]
+                        )
                     )
-                )
-                return
+
+                    return
             }
         }
     }
@@ -129,7 +162,7 @@ struct CommitFlow {
             user: CommitPrompt.user(diff: diff)
         )
 
-        var message = CommitMessage.normalize(raw)
+        var message = CommitMessage.normalize(raw.content) // TODO
 
         if CommitMessage.isValid(message) {
             return message
@@ -145,10 +178,10 @@ struct CommitFlow {
 
         let retryRaw = try await chatWithSpinner(
             system: CommitPrompt.system,
-            user: CommitPrompt.retry(previous: message)
+            user: CommitPrompt.retry(previous: message, diff: diff)
         )
 
-        message = CommitMessage.normalize(retryRaw)
+        message = CommitMessage.normalize(retryRaw.content)
 
         if !CommitMessage.isValid(message) {
             prompts.printLine(
@@ -176,6 +209,38 @@ struct CommitFlow {
             prompts.printLine("  \(TerminalStyle.blue(String(line)))")
         }
         prompts.printLine("")
+    }
+
+    private func printDiff(_ diff: String) {
+        prompts.printLine()
+        prompts.printLine(TerminalStyle.styled("Diff used for this suggestion:",
+                                               foreground: .yellow,
+                                               attributes: [.bold]))
+        prompts.printLine()
+
+        for line in diff.split(separator: "\n", omittingEmptySubsequences: false) {
+            let text = String(line)
+
+            if text.hasPrefix("+++") || text.hasPrefix("---") {
+                prompts.printLine(TerminalStyle.styled(text,
+                                                       foreground: .cyan,
+                                                       attributes: [.bold]))
+            } else if text.hasPrefix("+") {
+                prompts.printLine(TerminalStyle.green(text))
+            } else if text.hasPrefix("-") {
+                prompts.printLine(TerminalStyle.red(text))
+            } else if text.hasPrefix("@@") {
+                prompts.printLine(TerminalStyle.magenta(text))
+            } else if text.hasPrefix("diff --git") || text.hasPrefix("=== NEW FILE:") {
+                prompts.printLine(TerminalStyle.styled(text,
+                                                       foreground: .cyan,
+                                                       attributes: [.bold]))
+            } else {
+                prompts.printLine(text)
+            }
+        }
+
+        prompts.printLine()
     }
 
     private func printStatusFiles(_ status: GitStatus) {
@@ -210,15 +275,27 @@ struct CommitFlow {
         list(status.untracked, symbol: "?", color: .gray)
     }
 
-    private func chatWithSpinner(system: String, user: String) async throws -> String {
-        // without interactive input, no animation
+    private func chatWithSpinner(system: String,
+                                 user: String
+    ) async throws -> OllamaChatResult {
         guard prompts.isInteractive else {
-            return try await ollama.chat(system: system, user: user)
+            let result = try await ollama.chat(
+                system: system,
+                user: user
+            )
+
+            printGenerationDetails(result)
+            return result
         }
 
         let spinner = Task<Void, Never> {
-            let frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-            let message = TerminalStyle.brightGreen("Generating commit message …")
+            let frames = [
+                "⠋", "⠙", "⠹", "⠸", "⠼",
+                "⠴", "⠦", "⠧", "⠇", "⠏",
+            ]
+            let message = TerminalStyle.brightGreen(
+                "Generating commit message …"
+            )
             let clock = ContinuousClock()
             let start = clock.now
             var index = 0
@@ -243,13 +320,17 @@ struct CommitFlow {
         }
 
         do {
-            let response = try await ollama.chat(system: system, user: user)
+            let result = try await ollama.chat(
+                system: system,
+                user: user
+            )
 
             spinner.cancel()
             await spinner.value
             Stderr.write("\r\u{001B}[2K")
 
-            return response
+            printGenerationDetails(result)
+            return result
         } catch {
             spinner.cancel()
             await spinner.value
@@ -257,5 +338,61 @@ struct CommitFlow {
 
             throw error
         }
+    }
+
+    private func printGenerationDetails(_ result: OllamaChatResult) {
+        guard verbose else { return }
+        
+        func printDetail(_ label: String, _ value: String) {
+            let title = TerminalStyle.styled(
+                label.padding(
+                    toLength: 19,
+                    withPad: " ",
+                    startingAt: 0
+                ),
+                foreground: .yellow,
+                attributes: [.bold]
+            )
+
+            prompts.printLine("  \(title)\(TerminalStyle.gray(value))")
+        }
+
+        func durationText(_ seconds: Double?) -> String {
+            guard let seconds else {
+                return "n/a"
+            }
+
+            return String(
+                format: "%.2f sec",
+                locale: Locale(identifier: "en_US_POSIX"),
+                seconds
+            )
+        }
+
+        prompts.printLine()
+        prompts.printLine(TerminalStyle.styled("Generation details",
+                                               foreground: .yellow,
+                                               attributes: [.bold]))
+
+        printDetail("Model:",
+                    ollama.model)
+        printDetail("Context window:",
+                    "\(ollama.contextWindow)")
+        printDetail("Temperature:",
+                    "\(ollama.temperature)")
+        printDetail("Ollama total time:",
+                    durationText(result.totalDurationSeconds))
+        printDetail("Model load time:",
+                    durationText(result.loadDurationSeconds))
+        printDetail("Output time:",
+                    durationText(result.outputDurationSeconds))
+        printDetail("Prompt tokens:",
+                    result.promptEvalCount.map { String($0) } ?? "n/a")
+        printDetail("Output tokens:",
+                    result.evalCount.map { String($0) } ?? "n/a")
+        printDetail("Stop reason:",
+                    result.doneReason ?? "n/a")
+
+        prompts.printLine()
     }
 }

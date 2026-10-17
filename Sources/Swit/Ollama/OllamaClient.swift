@@ -114,14 +114,14 @@ struct OllamaClient {
             $0.name.localizedStandardCompare($1.name) == .orderedAscending
         }
 
-        guard !model.isEmpty else {
+        guard !models.isEmpty else {
             throw SwitError.noOllamaModels(host.absoluteString)
         }
 
         return models
     }
 
-    func chat(system: String, user: String) async throws -> String {
+    func chat(system: String, user: String) async throws -> OllamaChatResult {
         let endpoint = chatURL()
         var request = URLRequest(url: endpoint)
 
@@ -151,8 +151,9 @@ struct OllamaClient {
             throw SwitError.ollamaUnreachable(host.absoluteString)
         }
 
-        if let errorPayload = try? JSONDecoder().decode(OllamaErrorPayload.self, from: data),
-            let message = errorPayload.error, !message.isEmpty
+        if let errorPayload = try? JSONDecoder().decode(OllamaErrorPayload.self,
+                from: data),
+           let message = errorPayload.error, !message.isEmpty
         {
             throw mapOllamaError(message)
         }
@@ -162,19 +163,19 @@ struct OllamaClient {
             throw mapOllamaError(body)
         }
 
-        let decoded: ChatResponse
+        let decoded: OllamaChatResult
         do {
-            decoded = try JSONDecoder().decode(ChatResponse.self, from: data)
+            decoded = try JSONDecoder().decode(OllamaChatResult.self,
+                                               from: data)
         } catch {
             throw SwitError.ollamaFailed("Answer could not be read.")
         }
 
-        let content = decoded.message?.content.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if content.isEmpty {
+        guard !decoded.content.isEmpty else {
             throw SwitError.ollamaFailed("Empty answer from model '\(model)'.")
         }
 
-        return content
+        return decoded
     }
 
     private func chatURL() -> URL {
@@ -231,9 +232,6 @@ private struct ChatRequest: Encodable {
 private struct ChatMessage: Codable {
     let role: String
     let content: String
-}
-private struct ChatResponse: Decodable {
-    let message: ChatMessage?
 }
 private struct OllamaErrorPayload: Decodable {
     let error: String?

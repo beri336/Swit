@@ -18,10 +18,39 @@ final class ConfigurationValidatorTests: XCTestCase {
         XCTAssertFalse(ConfigurationValidator.isValid(temperature: .nan))
     }
 
-    func testContextWindowAcceptsPositiveValues() {
-        XCTAssertTrue(ConfigurationValidator.isValid(contextWindow: 1))
-        XCTAssertTrue(ConfigurationValidator.isValid(contextWindow: 4_096))
-        XCTAssertTrue(ConfigurationValidator.isValid(contextWindow: 8_192))
+    func testContextWindowAcceptsValuesWithinAllowedRange() {
+        let validValues = [
+            2_048,
+            8_192,
+            32_768,
+        ]
+
+        for value in validValues {
+            XCTAssertTrue(
+                ConfigurationValidator.isValid(contextWindow: value),
+                "Expected \(value) to be a valid context window."
+            )
+        }
+    }
+
+    func testContextWindowRejectsValuesOutsideAllowedRange() {
+        let invalidValues = [
+            Int.min,
+            -1,
+            0,
+            1,
+            2_047,
+            32_769,
+            2_000_000,
+            Int.max,
+        ]
+
+        for value in invalidValues {
+            XCTAssertFalse(
+                ConfigurationValidator.isValid(contextWindow: value),
+                "Expected \(value) to be an invalid context window."
+            )
+        }
     }
 
     func testContextWindowRejectsZeroAndNegativeValues() {

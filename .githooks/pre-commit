@@ -1,92 +1,69 @@
-#!/usr/bin/env python3
+#!/bin/sh
 
-import json
-import re
-import subprocess
-import sys
+set -eu
 
-APP_INFO_PATH = "Sources/Swit/CLI/AppInfo.swift"
-MANIFEST_PATH = "version.json"
-VERSION_PATTERN = r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+repository_root=$(git rev-parse --show-toplevel)
+cd "$repository_root"
 
+if ! command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' "Versionsprüfung: fehlgeschlagen — python3 fehlt." >&2
+    exit 1
+fi
 
-def fail(message):
-    print(f"Version check failed: {message}", file=sys.stderr)
-    sys.exit(1)
+if ! command -v swift >/dev/null 2>&1; then
+    printf '%s\n' "Swift-Prüfung: fehlgeschlagen — swift fehlt." >&2
+    exit 1
+fi
 
-def git(*arguments):
-    return subprocess.run(["git", *arguments],
-                          capture_output=True,
-                          text=True,)
+# Build and tests must see the same files as the proposed commit.
+if ! git diff --quiet --; then
+    printf '%s\n' \
+        "Commit abgebrochen: Es gibt ungestagte Änderungen." \
+        "Bitte die gewünschten Änderungen stagen oder separat sichern." >&2
+    exit 1
+fi
 
-def read_git_file(reference, path):
-    result = git("show", f"{reference}:{path}")
+untracked_files=$(git ls-files --others --exclude-standard)
 
-    if result.returncode != 0:
-        fail(f"Could not read {path} from {reference or 'the index'}.")
+if [ -n "$untracked_files" ]; then
+    printf '%s\n' \
+        "Commit abgebrochen: Es gibt nicht ignorierte, ungetrackte Dateien." \
+        "Bitte diese stagen, ignorieren oder außerhalb des Repositorys sichern." >&2
+    exit 1
+fi
 
-    return result.stdout
+log_file=$(mktemp "${TMPDIR:-/tmp}/swit-pre-commit.XXXXXX")
 
-def parse_version(value):
-    if not isinstance(value, str) or not re.fullmatch(VERSION_PATTERN, value):
-        fail(f"Invalid version {value!r}. Expected X.Y.Z without leading zeros.")
+trap 'rm -f "$log_file"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
-    return tuple(map(int, value.split(".")))
+if ! python3 .githooks/check-version.py >"$log_file" 2>&1; then
+    printf '%s\n' "Versionsprüfung: fehlgeschlagen" >&2
+    cat "$log_file" >&2
+    exit 1
+fi
 
-def read_app_version(content):
-    matches = re.findall(r'^\s*static\s+let\s+version\s*=\s*"([^"]+)"\s*$',
-                         content,
-                         flags=re.MULTILINE,)
+# Do not pass the parent repository's Git environment to test repositories.
+git_local_variables=$(git rev-parse --local-env-vars)
 
-    if len(matches) != 1:
-        fail("Expected exactly one static let version in AppInfo.swift.")
+for variable in $git_local_variables; do
+    unset "$variable"
+done
 
-    return parse_version(matches[0])
+run_check() {
+    label=$1
+    shift
 
-def format_version(version):
-    return ".".join(map(str, version))
+    if "$@" >"$log_file" 2>&1; then
+        printf '%s: erfolgreich\n' "$label" >&2
+    else
+        printf '%s: fehlgeschlagen\n' "$label" >&2
+        printf '%s\n' '--- Letzte 60 Logzeilen ---' >&2
+        tail -n 60 "$log_file" >&2
+        exit 1
+    fi
+}
 
-new_version = read_app_version(read_git_file("", APP_INFO_PATH))
-
-try:
-    manifest = json.loads(read_git_file("", MANIFEST_PATH))
-except json.JSONDecodeError:
-    fail("version.json contains invalid JSON.")
-
-if not isinstance(manifest, dict):
-    fail("version.json must contain a JSON object.")
-
-manifest_version = parse_version(manifest.get("version"))
-
-if manifest_version != new_version:
-    fail("AppInfo.version and version.json must match in the staged files.")
-
-head = git("rev-parse", "--verify", "HEAD")
-
-if head.returncode != 0:
-    print(f"Initial version accepted: {format_version(new_version)}")
-    sys.exit(0)
-
-previous = git("show", f"HEAD:{APP_INFO_PATH}")
-
-if previous.returncode != 0:
-    fail("HEAD has no readable AppInfo.swift. "
-        "Define a baseline version before enabling this hook.")
-
-old_version = read_app_version(previous.stdout)
-major, minor, patch = old_version
-
-allowed = [
-    (major, minor, patch + 1),
-    (major, minor + 1, 0),
-    (major + 1, 0, 0),
-]
-
-if new_version not in allowed:
-    options = ", ".join(format_version(version) for version in allowed)
-    fail(f"{format_version(old_version)} → {format_version(new_version)} "
-         f"is not allowed. Expected one of: {options}. "
-         "Update and stage both version files.")
-
-print(f"Version check passed: "
-      f"{format_version(old_version)} → {format_version(new_version)}")
+run_check "swift build" swift build
+run_check "swift test" swift test

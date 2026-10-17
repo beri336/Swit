@@ -5,6 +5,8 @@ import Foundation
 enum ConfigurationValidator {
     static let minimumTemperature = 0.0
     static let maximumTemperature = 2.0
+    static let minimumContextWindow = 2_048
+    static let maximumContextWindow = 32_768
 
     static func isValid(temperature: Double) -> Bool {
         temperature.isFinite &&
@@ -13,7 +15,7 @@ enum ConfigurationValidator {
     }
 
     static func isValid(contextWindow: Int) -> Bool {
-        contextWindow > 0
+        (minimumContextWindow...maximumContextWindow).contains(contextWindow)
     }
 
     static func isValid(keepAlive: String) -> Bool {

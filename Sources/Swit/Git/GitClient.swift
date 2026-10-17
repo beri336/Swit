@@ -8,6 +8,12 @@ struct GitClient {
 
     private static let maxFileBytes = 80 * 1024
 
+    struct RepositorySnapshot: Equatable {
+        let head: String?           // current commit
+        let indexTree: String       // content of previous staging area
+        let selectedTree: String    // content of current staging area
+    }
+
     static func open(at path: String) throws -> GitClient {
         guard let git = ExecutableFinder.find("git") else {
             throw SwitError.gitNotFound
@@ -55,6 +61,82 @@ struct GitClient {
                     !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 }.joined(separator: "\n")
         }
+    }
+
+    func repositorySnapshot(mode: StagingMode) throws -> RepositorySnapshot {
+        let head: String?
+
+        if hasHead() {
+            head = try run(["rev-parse", "--verify", "HEAD"])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            head = nil
+        }
+
+        let indexPath = try run(["rev-parse", "--git-path", "index"])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let repositoryURL = URL(fileURLWithPath: repoPath,
+                                     isDirectory: true
+        )
+
+        let indexURL = URL(fileURLWithPath: indexPath,
+                           relativeTo: repositoryURL
+        ).standardizedFileURL
+
+        let temporaryIndexURL = indexURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("swit-index-\(UUID().uuidString)")
+
+        let fileManager = FileManager.default
+        let environment = [
+            "GIT_INDEX_FILE": temporaryIndexURL.path,
+        ]
+
+        defer {
+            try? fileManager.removeItem(at: temporaryIndexURL)
+
+            try? fileManager.removeItem(
+                atPath: temporaryIndexURL.path + ".lock"
+            )
+        }
+
+        if fileManager.fileExists(atPath: indexURL.path) {
+            try fileManager.copyItem(at: indexURL,
+                                     to: temporaryIndexURL
+            )
+        } else {
+            try run(["read-tree", "--empty"],
+                    environmentOverrides: environment
+            )
+        }
+
+        let indexTree = try run(["write-tree"],
+                                environmentOverrides: environment
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+
+        switch mode {
+            case .stagedOnly:
+                break
+
+            case .tracked:
+                try run(["add", "-u", "--"],
+                        environmentOverrides: environment
+                )
+
+            case .all:
+                try run(["add", "-A", "--"],
+                        environmentOverrides: environment
+                )
+        }
+
+        let selectedTree = try run(["write-tree"],
+                                   environmentOverrides: environment
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return RepositorySnapshot(head: head,
+                                  indexTree: indexTree,
+                                  selectedTree: selectedTree)
     }
 
     func validateMode(_ mode: StagingMode, status: GitStatus) throws {
@@ -168,16 +250,26 @@ struct GitClient {
     }
 
     @discardableResult
-    func run(_ arguments: [String]) throws -> String {
+    func run(_ arguments: [String],
+             environmentOverrides: [String: String] = [:]) throws -> String
+    {
         let process = Process()
+
         process.executableURL = URL(fileURLWithPath: gitExecutable)
         process.arguments = ["--no-pager"] + arguments
         process.currentDirectoryURL = URL(fileURLWithPath: repoPath)
-        process.environment = gitEnvironment()
+
+        var environment = gitEnvironment()
+        environment.merge(environmentOverrides) { _, newValue in newValue }
+        process.environment = environment
 
         let fileManager = FileManager.default
-        let outURL = fileManager.temporaryDirectory.appendingPathComponent("swit-out-\(UUID().uuidString)")
-        let errURL = fileManager.temporaryDirectory.appendingPathComponent("swit-err-\(UUID().uuidString)")
+        let outURL = fileManager
+            .temporaryDirectory
+            .appendingPathComponent("swit-out-\(UUID().uuidString)")
+        let errURL = fileManager
+            .temporaryDirectory
+            .appendingPathComponent("swit-err-\(UUID().uuidString)")
 
         fileManager.createFile(atPath: outURL.path, contents: nil)
         fileManager.createFile(atPath: errURL.path, contents: nil)

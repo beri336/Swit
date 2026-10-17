@@ -36,6 +36,11 @@ struct CommitCommand: AsyncParsableCommand {
           help: "Just display the suggested message; do not run `git add` or `git commit`.")
     var dryRun: Bool = false
 
+    @Flag(name: .long,
+          help: "Show model settings and usage metrics for each generation attempt."
+    )
+    var verbose: Bool = false
+
     func run() async throws {
         do {
             let repositoryPath = path ?? FileManager.default.currentDirectoryPath
@@ -56,7 +61,8 @@ struct CommitCommand: AsyncParsableCommand {
                 git: git,
                 ollama: ollama,
                 stagingMode: staging,
-                dryRun: dryRun
+                dryRun: dryRun,
+                verbose: verbose
             )
 
             try await flow.run()

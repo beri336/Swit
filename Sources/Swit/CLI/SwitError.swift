@@ -11,6 +11,7 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible, Equatable {
     case emptyMessage
     case aborted
     case notInteractive
+    case repositoryChanged
     case invalidContextWindow(Int)
     case invalidTemperature(Double)
     case invalidKeepAlive(String)
@@ -112,6 +113,17 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible, Equatable {
                     foreground: .yellow,
                     attributes: [.bold])
 
+            case .repositoryChanged:
+                return TerminalStyle.styled(
+                    """
+                    Repository changes no longer match the generated suggestion.
+                    No commit was created. Please review your changes and run the command again.
+                    If staging already occurred, the staged changes have been left in place.
+                    """,
+                    foreground: .yellow,
+                    attributes: [.bold]
+                )
+
             case .invalidConfiguration(let path):
                 return TerminalStyle.styled(
                     """
@@ -139,7 +151,11 @@ enum SwitError: Error, LocalizedError, CustomStringConvertible, Equatable {
 
             case .invalidContextWindow(let value):
                 return TerminalStyle.styled(
-                    "Invalid context window: \(value). The value must be greater than 0.",
+                    """
+                    Invalid context window: \(value).
+                    Use between \(ConfigurationValidator.minimumContextWindow) and \(ConfigurationValidator.maximumContextWindow) tokens.
+                    Recommended default: \(AppConfiguration.defaultContextWindow) tokens.
+                    """,
                     foreground: .magenta,
                     attributes: [.italic])
 

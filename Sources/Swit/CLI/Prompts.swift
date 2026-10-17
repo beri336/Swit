@@ -16,6 +16,8 @@ struct Prompts {
     enum ReviewChoice {
         case commit
         case edit
+        case regenerate
+        case diff
         case abort
     }
 
@@ -73,29 +75,47 @@ struct Prompts {
     func askReview() throws -> ReviewChoice {
         try requireInteractive()
 
-        let prompt =
-            "\(TerminalStyle.green("[y] Commit"))  " + "\(TerminalStyle.yellow("[e] Edit"))  "
-            + "\(TerminalStyle.red("[n] Abort"))\n> "
+        let prompt = [
+            TerminalStyle.green("[y] Commit"),
+            TerminalStyle.yellow("[e] Edit"),
+            TerminalStyle.cyan("[r] Regenerate"),
+            TerminalStyle.blue("[d] Diff"),
+            TerminalStyle.red("[n] Abort"),
+        ].joined(separator: "  ")
 
-        Stderr.write(prompt)
+        while true {
+            Stderr.write(prompt +
+            "\n" +
+            TerminalStyle.gray("> "))
 
-        guard let raw = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        else {
-            throw SwitError.aborted
-        }
-        switch raw {
-        case "y", "yes", "j", "":
-            return .commit
-        case "e", "edit":
-            return .edit
-        case "n", "no", "q", "abort", "quit":
-            return .abort
-        default:
-            Stderr.write(
-                TerminalStyle.red(TerminalStyle.bold("Invalid selection. Enter y, e or n.")) + "\n"
-            )
+            guard let raw = readLine() else {
+                throw SwitError.aborted
+            }
 
-            return try askReview()
+            let input = raw
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .lowercased()
+            
+            switch input {
+                case "y", "yes", "j", "":
+                    return .commit
+                case "e", "edit":
+                    return .edit
+                case "r", "regenerate":
+                    return .regenerate
+                case "d", "diff":
+                    return .diff
+                case "n", "no", "q", "abort", "quit":
+                    return .abort
+
+                default:
+                printLine(
+                    TerminalStyle.styled("Invalid selection. Enter y, e or n.\n",
+                        foreground: .red,
+                        attributes: [.bold]))
+
+                    return try askReview()
+            }
         }
     }
 
@@ -211,36 +231,53 @@ struct Prompts {
     func askContextWindow(current: Int) throws -> Int {
         try requireInteractive()
 
+        let minTokens = ConfigurationValidator.minimumContextWindow
+        let maxTokens = ConfigurationValidator.maximumContextWindow
+        let defaultValue = AppConfiguration.defaultContextWindow
+
         printLine(
-            TerminalStyle.styled(
-                "Current context window: ",
-                foreground: .green,
-                attributes: [.bold]
+            TerminalStyle.styled("Current context window: ",
+                                 foreground: .green,
+                                 attributes: [.bold]) +
+                TerminalStyle.gray("\(current)")
+        )
+
+        while true {
+            Stderr.write(
+                TerminalStyle.green(
+                    "New context window in tokens (\(minTokens)-\(maxTokens), default \(defaultValue); [q] cancel:"
+                ) + "\n" + TerminalStyle.gray("> ")
             )
-                + TerminalStyle.gray("\(current)")
-        )
 
-        Stderr.write(
-            TerminalStyle.green("New context window:")
-                + "\n"
-                + TerminalStyle.gray("> ")
-        )
+            guard let raw = readLine() else {
+                throw SwitError.aborted
+            }
 
-        guard let raw = readLine() else {
-            throw SwitError.aborted
+            let input = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if ["q", "quit"].contains(input.lowercased()) {
+                throw SwitError.aborted
+            }
+
+            guard let contextWindow = Int(input) else {
+                printLine(
+                    TerminalStyle.styled(
+                        "Invalid input. Enter a whole number between \(minTokens) and \(maxTokens), or q to cancel.",
+                        foreground: .yellow,
+                        attributes: [.bold])
+                )
+                continue
+            }
+
+            guard ConfigurationValidator.isValid(contextWindow: contextWindow) else {
+                printLine(
+                    SwitError.invalidContextWindow(contextWindow).description
+                )
+                continue
+            }
+
+            return contextWindow
         }
-
-        let input = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard let contextWindow = Int(input) else {
-            throw SwitError.invalidContextWindow(0)
-        }
-
-        guard ConfigurationValidator.isValid(contextWindow: contextWindow) else {
-            throw SwitError.invalidContextWindow(contextWindow)
-        }
-
-        return contextWindow
     }
 
     func askKeepAlive(current: String) throws -> String {
